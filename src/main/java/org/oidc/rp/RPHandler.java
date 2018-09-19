@@ -16,6 +16,9 @@
 
 package org.oidc.rp;
 
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,7 @@ import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
 import org.oidc.common.UnsupportedSerializationTypeException;
 import org.oidc.msg.SerializationException;
+import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.http.HttpClientWrapper;
 import org.oidc.rp.oauth2.Client;
 import org.oidc.service.Service;
@@ -81,6 +85,72 @@ public class RPHandler {
     Client client = new Client();
     client.setServiceContext(serviceContext);
     return client;
+  }
+  
+  /**
+   * Constructs the URL that will redirect the user to the authentication endpoint of the OP /
+   * authorization endpoint of the AS.
+   * 
+   * @param client
+   *          Client instance, having service context for configuring the request.
+   * @param state
+   *          For fetching existing client instance if client is set as null.
+   * @param requestArguments
+   *          Non-default request arguments.
+   * @return List of strings, first value is url for authentication/authorization endpoint, second
+   *         value is state parameter.
+   * @throws MissingRequiredAttributeException
+   *           if both client and state are null.
+   * @throws SerializationException
+   * @throws RequestArgumentProcessingException
+   * @throws UnsupportedSerializationTypeException
+   */
+  @SuppressWarnings("unchecked")
+  protected List<String> initializeAuthentication(Client client, String state,
+      Map<String, Object> requestArguments)
+      throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
+      RequestArgumentProcessingException, SerializationException {
+
+    if (client == null) {
+      if (state == null) {
+        throw new MissingRequiredAttributeException("Either client or state must be provided");
+      }
+      // TODO: way to store client per state key and fetch it here
+      throw new MissingRequiredAttributeException("Fetching client by state not implemented yet");
+    }
+    // Set default arguments nonce, redirect_uri, scope and response type
+    Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
+    // Set nonce
+    // TODO: create project util for creating state/nonce
+    byte[] rand = new byte[32];
+    new SecureRandom().nextBytes(rand);
+    defaultRequestArguments.put("nonce", Base64.getUrlEncoder().encodeToString(rand));
+    // Set redirect_uri
+    if (client.getServiceContext().getRedirectUris() != null
+        && client.getServiceContext().getRedirectUris().size() > 0) {
+      defaultRequestArguments.put("redirect_uri",
+          client.getServiceContext().getRedirectUris().get(0));
+    }
+    RegistrationResponse behavior = client.getServiceContext().getBehavior();
+    if (behavior != null) {
+      // set scope
+      defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
+      // Set response type
+      if (behavior.getClaims().containsKey("response_types")) {
+        defaultRequestArguments.put("response_type",
+            (String) ((List<String>) behavior.getClaims().get("response_types")).get(0));
+      }
+    }
+    // Set non-default request arguments
+    defaultRequestArguments.putAll(requestArguments);
+
+    // TODO: get state db, create new staterecord/state, store nonce to state
+
+    List<String> uriAndState = new ArrayList<String>();
+    uriAndState.add(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
+        .getRequestParameters(defaultRequestArguments).getUrl());
+    uriAndState.add(state);
+    return uriAndState;
   }
   
   protected void getIssuerViaWebfinger(Service webfinger, String resource) {
