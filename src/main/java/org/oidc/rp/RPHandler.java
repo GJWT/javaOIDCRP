@@ -142,7 +142,7 @@ public class RPHandler {
     }
     // Set default arguments nonce, redirect_uri, scope and response type
     Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
-    //Set client_id
+    // Set client_id
     defaultRequestArguments.put("client_id", client.getServiceContext().getClientId());
     // Set nonce
     // TODO: create project util for creating state/nonce
@@ -159,7 +159,7 @@ public class RPHandler {
     if (behavior != null) {
       // set scope
       if (behavior.getClaims().containsKey("scope")) {
-      defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
+        defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
       }
       // Set response type
       if (behavior.getClaims().containsKey("response_types")) {
@@ -167,7 +167,7 @@ public class RPHandler {
             (String) ((List<String>) behavior.getClaims().get("response_types")).get(0));
       }
     }
-    
+
     // Set non-default request arguments
     if (requestArguments != null) {
       defaultRequestArguments.putAll(requestArguments);
