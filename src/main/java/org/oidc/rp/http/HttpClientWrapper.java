@@ -17,11 +17,14 @@
 package org.oidc.rp.http;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -41,7 +44,18 @@ public class HttpClientWrapper {
       HttpGet httpGet = new HttpGet(httpArguments.getUrl());
       doRequest(httpGet, service);
     } else if (HttpMethod.POST.equals(httpArguments.getHttpMethod())) {
-      
+      HttpPost httpPost = new HttpPost(httpArguments.getUrl());
+      httpPost.setHeader("Content-Type", "application/json");
+      StringEntity entity;
+      try {
+        entity = new StringEntity(httpArguments.getBody());
+        System.out.println("Sending payload: " + httpArguments.getBody());
+        httpPost.setEntity(entity);
+        doRequest(httpPost, service);
+      } catch (UnsupportedEncodingException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
     }
   }
   
