@@ -36,29 +36,45 @@ import org.oidc.service.base.HttpArguments;
 import org.oidc.service.base.RequestArgumentProcessingException;
 import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceContext;
+import org.oidc.service.data.InMemoryStateImpl;
+import org.oidc.service.data.State;
+import org.oidc.service.oidc.Authentication;
 import org.oidc.service.oidc.ProviderInfoDiscovery;
 import org.oidc.service.oidc.Registration;
 import org.oidc.service.oidc.Webfinger;
 import org.oidc.service.util.Constants;
 
 public class RPHandler {
-  
+
   private ServiceContext serviceContext;
-  
+
   private List<ServiceConfig> services;
-  
+
   private Client client;
 
+  /** State db for storing messages. */
+  private State stateDb;
+
   public RPHandler(List<ServiceConfig> services, ServiceContext serviceCtx) {
-    this.services = services;
-    this.serviceContext = serviceCtx;
+    this(services, serviceCtx, new InMemoryStateImpl());
   }
 
-  public void begin(String issuer, String userId) throws MissingRequiredAttributeException {
-    client = setupClient(issuer, userId);
+  public RPHandler(List<ServiceConfig> services, ServiceContext serviceCtx, State stateDb) {
+    this.services = services;
+    this.serviceContext = serviceCtx;
+    this.stateDb = stateDb;
   }
-  
-  protected Client setupClient(String issuer, String userId) throws MissingRequiredAttributeException {
+
+  public List<String> begin(String issuer, String userId)
+      throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
+      RequestArgumentProcessingException, SerializationException {
+    client = setupClient(issuer, userId);
+    // TODO: Do we ever need to set state or requestArguments?
+    return initializeAuthentication(client, null, null);
+  }
+
+  protected Client setupClient(String issuer, String userId)
+      throws MissingRequiredAttributeException {
     if (issuer == null) {
       if (userId == null) {
         throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
@@ -67,28 +83,32 @@ public class RPHandler {
       if (webfinger != null) {
         getIssuerViaWebfinger(webfinger, userId);
         if (serviceContext.getIssuer() == null) {
-          throw new MissingRequiredAttributeException("Could not resolve the issuer for userId=" + userId);
+          throw new MissingRequiredAttributeException(
+              "Could not resolve the issuer for userId=" + userId);
         }
       } else {
-        throw new MissingRequiredAttributeException("Webfinger service must be configured if no issuer is provided");        
+        throw new MissingRequiredAttributeException(
+            "Webfinger service must be configured if no issuer is provided");
       }
-      Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY, serviceContext);
+      Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
+          serviceContext);
       if (providerInfoDiscovery != null) {
         fetchIssuerConfiguration(providerInfoDiscovery);
       } else {
-        throw new MissingRequiredAttributeException("ProviderInfoDiscovery service must be configured");
+        throw new MissingRequiredAttributeException(
+            "ProviderInfoDiscovery service must be configured");
       }
       Service registration = getService(ServiceName.REGISTRATION, serviceContext);
       if (registration != null) {
         doDynamicRegistration(registration);
       }
-      //TODO: continue the sequence
+      // TODO: continue the sequence
     }
     Client client = new Client();
     client.setServiceContext(serviceContext);
     return client;
   }
-  
+
   /**
    * Constructs the URL that will redirect the user to the authentication endpoint of the OP /
    * authorization endpoint of the AS.
@@ -122,6 +142,8 @@ public class RPHandler {
     }
     // Set default arguments nonce, redirect_uri, scope and response type
     Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
+    //Set client_id
+    defaultRequestArguments.put("client_id", client.getServiceContext().getClientId());
     // Set nonce
     // TODO: create project util for creating state/nonce
     byte[] rand = new byte[32];
@@ -136,25 +158,30 @@ public class RPHandler {
     RegistrationResponse behavior = client.getServiceContext().getBehavior();
     if (behavior != null) {
       // set scope
+      if (behavior.getClaims().containsKey("scope")) {
       defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
+      }
       // Set response type
       if (behavior.getClaims().containsKey("response_types")) {
         defaultRequestArguments.put("response_type",
             (String) ((List<String>) behavior.getClaims().get("response_types")).get(0));
       }
     }
+    
     // Set non-default request arguments
-    defaultRequestArguments.putAll(requestArguments);
-
-    // TODO: get state db, create new staterecord/state, store nonce to state
-
+    if (requestArguments != null) {
+      defaultRequestArguments.putAll(requestArguments);
+    }
+    state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), state);
+    defaultRequestArguments.put("state", state);
+    stateDb.storeStateKeyForNonce((String) defaultRequestArguments.get("nonce"), state);
     List<String> uriAndState = new ArrayList<String>();
     uriAndState.add(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
         .getRequestParameters(defaultRequestArguments).getUrl());
     uriAndState.add(state);
     return uriAndState;
   }
-  
+
   protected void getIssuerViaWebfinger(Service webfinger, String resource) {
     Map<String, Object> requestParams = new HashMap<>();
     requestParams.put(Constants.WEBFINGER_RESOURCE, resource);
@@ -167,7 +194,7 @@ public class RPHandler {
       e.printStackTrace();
     }
   }
-  
+
   protected void fetchIssuerConfiguration(Service providerInfoDiscovery) {
     try {
       HttpArguments httpArguments = providerInfoDiscovery.getRequestParameters(null);
@@ -178,7 +205,7 @@ public class RPHandler {
       e.printStackTrace();
     }
   }
-  
+
   protected void doDynamicRegistration(Service registration) {
     try {
       Map<String, Object> requestArguments = new HashMap<>();
@@ -191,7 +218,7 @@ public class RPHandler {
       e.printStackTrace();
     }
   }
-  
+
   protected Service getService(ServiceName serviceName, ServiceContext serviceContext) {
     for (ServiceConfig serviceConfig : services) {
       if (serviceName.equals(serviceConfig.getServiceName())) {
@@ -204,12 +231,15 @@ public class RPHandler {
         if (ServiceName.REGISTRATION.equals(serviceName)) {
           return new Registration(serviceContext, null, serviceConfig);
         }
-        //TODO support other services
+        if (ServiceName.AUTHORIZATION.equals(serviceName)) {
+          return new Authentication(serviceContext, stateDb, serviceConfig);
+        }
+        // TODO support other services
       }
     }
     return null;
   }
-  
+
   public Client getClient() {
     return client;
   }
