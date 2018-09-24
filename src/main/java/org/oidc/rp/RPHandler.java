@@ -18,6 +18,7 @@ package org.oidc.rp;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -42,15 +43,15 @@ import org.oidc.service.util.Constants;
 
 public class RPHandler {
   
-  private String issuer;
+  private ServiceContext serviceContext;
   
   private List<ServiceConfig> services;
   
   private Client client;
-  
-  public RPHandler(String issuer, List<ServiceConfig> services) {
+
+  public RPHandler(List<ServiceConfig> services, ServiceContext serviceCtx) {
     this.services = services;
-    this.issuer = issuer;
+    this.serviceContext = serviceCtx;
   }
 
   public void begin(String issuer, String userId) throws MissingRequiredAttributeException {
@@ -58,7 +59,6 @@ public class RPHandler {
   }
   
   protected Client setupClient(String issuer, String userId) throws MissingRequiredAttributeException {
-    ServiceContext serviceContext = new ServiceContext();
     if (issuer == null) {
       if (userId == null) {
         throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
@@ -66,9 +66,7 @@ public class RPHandler {
       Service webfinger = getService(ServiceName.WEBFINGER, serviceContext);
       if (webfinger != null) {
         getIssuerViaWebfinger(webfinger, userId);
-        if (serviceContext.getIssuer() != null) {
-          this.issuer = serviceContext.getIssuer();
-        } else {
+        if (serviceContext.getIssuer() == null) {
           throw new MissingRequiredAttributeException("Could not resolve the issuer for userId=" + userId);
         }
       } else {
@@ -79,6 +77,10 @@ public class RPHandler {
         fetchIssuerConfiguration(providerInfoDiscovery);
       } else {
         throw new MissingRequiredAttributeException("ProviderInfoDiscovery service must be configured");
+      }
+      Service registration = getService(ServiceName.REGISTRATION, serviceContext);
+      if (registration != null) {
+        doDynamicRegistration(registration);
       }
       //TODO: continue the sequence
     }
@@ -170,6 +172,19 @@ public class RPHandler {
     try {
       HttpArguments httpArguments = providerInfoDiscovery.getRequestParameters(null);
       HttpClientWrapper.doRequest(httpArguments, providerInfoDiscovery);
+    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
+        | SerializationException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+  }
+  
+  protected void doDynamicRegistration(Service registration) {
+    try {
+      Map<String, Object> requestArguments = new HashMap<>();
+      requestArguments.put("redirect_uris", Arrays.asList("https://example.org/changeme"));
+      HttpArguments httpArguments = registration.getRequestParameters(requestArguments);
+      HttpClientWrapper.doRequest(httpArguments, registration);
     } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
         | SerializationException e) {
       // TODO Auto-generated catch block
