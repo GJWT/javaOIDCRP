@@ -18,7 +18,6 @@ package org.oidc.rp;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +28,7 @@ import org.oidc.common.ServiceName;
 import org.oidc.common.UnsupportedSerializationTypeException;
 import org.oidc.msg.SerializationException;
 import org.oidc.msg.oidc.RegistrationResponse;
+import org.oidc.rp.config.OpConfiguration;
 import org.oidc.rp.http.HttpClientWrapper;
 import org.oidc.rp.oauth2.Client;
 import org.oidc.service.Service;
@@ -46,22 +46,19 @@ import org.oidc.service.util.Constants;
 
 public class RPHandler {
 
-  private ServiceContext serviceContext;
-
-  private List<ServiceConfig> services;
-
+  private OpConfiguration opConfiguration;
+  
   private Client client;
 
   /** State db for storing messages. */
   private State stateDb;
 
-  public RPHandler(List<ServiceConfig> services, ServiceContext serviceCtx) {
-    this(services, serviceCtx, new InMemoryStateImpl());
+  public RPHandler(OpConfiguration configuration) {
+    this(configuration, new InMemoryStateImpl());
   }
 
-  public RPHandler(List<ServiceConfig> services, ServiceContext serviceCtx, State stateDb) {
-    this.services = services;
-    this.serviceContext = serviceCtx;
+  public RPHandler(OpConfiguration configuration, State stateDb) {
+    this.opConfiguration = configuration;
     this.stateDb = stateDb;
   }
 
@@ -75,14 +72,14 @@ public class RPHandler {
 
   protected Client setupClient(String issuer, String userId)
       throws MissingRequiredAttributeException {
-    if (issuer == null) {
+    if (issuer == null && opConfiguration.getServiceContext().getIssuer() == null) {
       if (userId == null) {
         throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
       }
-      Service webfinger = getService(ServiceName.WEBFINGER, serviceContext);
+      Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
       if (webfinger != null) {
         getIssuerViaWebfinger(webfinger, userId);
-        if (serviceContext.getIssuer() == null) {
+        if (opConfiguration.getServiceContext().getIssuer() == null) {
           throw new MissingRequiredAttributeException(
               "Could not resolve the issuer for userId=" + userId);
         }
@@ -90,22 +87,22 @@ public class RPHandler {
         throw new MissingRequiredAttributeException(
             "Webfinger service must be configured if no issuer is provided");
       }
-      Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
-          serviceContext);
-      if (providerInfoDiscovery != null) {
-        fetchIssuerConfiguration(providerInfoDiscovery);
-      } else {
-        throw new MissingRequiredAttributeException(
-            "ProviderInfoDiscovery service must be configured");
-      }
-      Service registration = getService(ServiceName.REGISTRATION, serviceContext);
-      if (registration != null) {
-        doDynamicRegistration(registration);
-      }
-      // TODO: continue the sequence
     }
+    Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
+        opConfiguration.getServiceContext());
+    if (providerInfoDiscovery != null) {
+      fetchIssuerConfiguration(providerInfoDiscovery);
+    } else {
+      throw new MissingRequiredAttributeException(
+          "ProviderInfoDiscovery service must be configured");
+    }
+    Service registration = getService(ServiceName.REGISTRATION, opConfiguration.getServiceContext());
+    if (registration != null) {
+      doDynamicRegistration(registration);
+    }
+    // TODO: continue the sequence
     Client client = new Client();
-    client.setServiceContext(serviceContext);
+    client.setServiceContext(opConfiguration.getServiceContext());
     return client;
   }
 
@@ -209,7 +206,6 @@ public class RPHandler {
   protected void doDynamicRegistration(Service registration) {
     try {
       Map<String, Object> requestArguments = new HashMap<>();
-      requestArguments.put("redirect_uris", Arrays.asList("https://example.org/changeme"));
       HttpArguments httpArguments = registration.getRequestParameters(requestArguments);
       HttpClientWrapper.doRequest(httpArguments, registration);
     } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
@@ -220,7 +216,7 @@ public class RPHandler {
   }
 
   protected Service getService(ServiceName serviceName, ServiceContext serviceContext) {
-    for (ServiceConfig serviceConfig : services) {
+    for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
       if (serviceName.equals(serviceConfig.getServiceName())) {
         if (ServiceName.WEBFINGER.equals(serviceName)) {
           return new Webfinger(serviceContext, serviceConfig);
