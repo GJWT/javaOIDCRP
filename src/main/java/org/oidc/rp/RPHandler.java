@@ -52,6 +52,9 @@ public class RPHandler {
 
   /** State db for storing messages. */
   private State stateDb;
+  
+  /** Maps issuer to correct client.*/
+  private Map<String, Client> issuer2Client = new HashMap<String, Client>();
 
   public RPHandler(OpConfiguration configuration) {
     this(configuration, new InMemoryStateImpl());
@@ -72,21 +75,29 @@ public class RPHandler {
 
   protected Client setupClient(String issuer, String userId)
       throws MissingRequiredAttributeException {
-    if (issuer == null && opConfiguration.getServiceContext().getIssuer() == null) {
-      if (userId == null) {
-        throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
+
+    //See if the client has been stored already by issuer
+    if (issuer != null || opConfiguration.getServiceContext().getIssuer() != null) {
+      issuer = issuer == null ? opConfiguration.getServiceContext().getIssuer() : issuer;
+      Client client = issuer2Client.get(issuer);
+      if (client != null) {
+        return client;
       }
-      Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
-      if (webfinger != null) {
-        getIssuerViaWebfinger(webfinger, userId);
-        if (opConfiguration.getServiceContext().getIssuer() == null) {
-          throw new MissingRequiredAttributeException(
-              "Could not resolve the issuer for userId=" + userId);
-        }
-      } else {
+    }
+    //No prestored client, we try to perform webfinger and register the client.
+    if (userId == null) {
+      throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
+    }
+    Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
+    if (webfinger != null) {
+      getIssuerViaWebfinger(webfinger, userId);
+      if (opConfiguration.getServiceContext().getIssuer() == null) {
         throw new MissingRequiredAttributeException(
-            "Webfinger service must be configured if no issuer is provided");
+            "Could not resolve the issuer for userId=" + userId);
       }
+    } else {
+      throw new MissingRequiredAttributeException(
+          "Webfinger service must be configured if no issuer is provided");
     }
     Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
         opConfiguration.getServiceContext());
@@ -103,6 +114,8 @@ public class RPHandler {
     // TODO: continue the sequence
     Client client = new Client();
     client.setServiceContext(opConfiguration.getServiceContext());
+    //We store registered client
+    issuer2Client.put(opConfiguration.getServiceContext().getIssuer(), client);
     return client;
   }
 
@@ -134,8 +147,10 @@ public class RPHandler {
       if (state == null) {
         throw new MissingRequiredAttributeException("Either client or state must be provided");
       }
-      // TODO: way to store client per state key and fetch it here
-      throw new MissingRequiredAttributeException("Fetching client by state not implemented yet");
+      client = issuer2Client.get(stateDb.getIssuer(state));
+      if (client == null) {
+        throw new MissingRequiredAttributeException("Not able to fetch client by state key");
+      }
     }
     // Set default arguments nonce, redirect_uri, scope and response type
     Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
