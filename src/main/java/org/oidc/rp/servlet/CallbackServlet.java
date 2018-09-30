@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.common.MissingRequiredAttributeException;
+import org.oidc.msg.DeserializationException;
 import org.oidc.rp.RPHandler;
 import org.oidc.service.data.StateRecord;
 
@@ -43,8 +44,8 @@ public class CallbackServlet extends HttpServlet {
     String state = request.getParameter("state");
     StateRecord stateRecord = handler.getStateDb().getState(state);
     try {
-      handler.finalize((String) stateRecord.getClaims().get("iss"), request.getParameterMap());
-    } catch (MissingRequiredAttributeException e) {
+      handler.finalize((String) stateRecord.getClaims().get("iss"), request.getQueryString());
+    } catch (MissingRequiredAttributeException | DeserializationException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
