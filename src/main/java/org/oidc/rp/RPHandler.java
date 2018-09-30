@@ -26,7 +26,9 @@ import java.util.Map;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
 import org.oidc.common.UnsupportedSerializationTypeException;
+import org.oidc.msg.DeserializationException;
 import org.oidc.msg.SerializationException;
+import org.oidc.msg.oidc.AuthenticationResponse;
 import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.config.OpConfiguration;
 import org.oidc.rp.http.HttpClientWrapper;
@@ -47,13 +49,13 @@ import org.oidc.service.util.Constants;
 public class RPHandler {
 
   private OpConfiguration opConfiguration;
-  
+
   private Client client;
 
   /** State db for storing messages. */
   private State stateDb;
-  
-  /** Maps issuer to correct client.*/
+
+  /** Maps issuer to correct client. */
   private Map<String, Client> issuer2Client = new HashMap<String, Client>();
 
   public RPHandler(OpConfiguration configuration) {
@@ -73,10 +75,35 @@ public class RPHandler {
     return initializeAuthentication(client, null, null);
   }
 
+  public void finalize(String issuer, String urlEncodedResponseBody)
+      throws MissingRequiredAttributeException, DeserializationException {
+
+    Client client = issuer2Client.get(issuer);
+    if (client == null) {
+      throw new MissingRequiredAttributeException("Could not resolve client for the issuer");
+    }
+    AuthenticationResponse authResponse = finalizeAuthentication(client, issuer,
+        urlEncodedResponseBody);
+    // TODO: Check whether response is error or not
+    // TODO: Depending on response type resolve access token and id token
+    // TODO: Depending on response type and configuration resolve userinfo response
+    // TODO: Return userinfo response, access_token and state
+    // TODO: what about id token? How it that returned?
+  }
+
+  protected AuthenticationResponse finalizeAuthentication(Client client, String issuer,
+      String urlEncodedResponseBody) throws DeserializationException {
+    Service service = getService(ServiceName.AUTHORIZATION, client.getServiceContext());
+    AuthenticationResponse response = (AuthenticationResponse) service
+        .parseResponse(urlEncodedResponseBody);
+    //TODO.. check if error or success response and move on.
+    return null;
+  }
+
   protected Client setupClient(String issuer, String userId)
       throws MissingRequiredAttributeException {
 
-    //See if the client has been stored already by issuer
+    // See if the client has been stored already by issuer
     if (issuer != null || opConfiguration.getServiceContext().getIssuer() != null) {
       issuer = issuer == null ? opConfiguration.getServiceContext().getIssuer() : issuer;
       Client client = issuer2Client.get(issuer);
@@ -84,7 +111,7 @@ public class RPHandler {
         return client;
       }
     }
-    //No prestored client, we try to perform webfinger and register the client.
+    // No prestored client, we try to perform webfinger and register the client.
     if (userId == null) {
       throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
     }
@@ -107,14 +134,15 @@ public class RPHandler {
       throw new MissingRequiredAttributeException(
           "ProviderInfoDiscovery service must be configured");
     }
-    Service registration = getService(ServiceName.REGISTRATION, opConfiguration.getServiceContext());
+    Service registration = getService(ServiceName.REGISTRATION,
+        opConfiguration.getServiceContext());
     if (registration != null) {
       doDynamicRegistration(registration);
     }
     // TODO: continue the sequence
     Client client = new Client();
     client.setServiceContext(opConfiguration.getServiceContext());
-    //We store registered client
+    // We store registered client
     issuer2Client.put(opConfiguration.getServiceContext().getIssuer(), client);
     return client;
   }
@@ -253,5 +281,9 @@ public class RPHandler {
 
   public Client getClient() {
     return client;
+  }
+
+  public State getStateDb() {
+    return stateDb;
   }
 }
