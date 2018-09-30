@@ -25,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.rp.RPHandler;
+import org.oidc.service.data.StateRecord;
 
 @SuppressWarnings("serial")
 public class CallbackServlet extends HttpServlet {
@@ -38,9 +39,11 @@ public class CallbackServlet extends HttpServlet {
   @Override
   public void service(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    // TODO implementation. 
+    // TODO: most of implementation and error handling. Only rough draft for now.
+    String state = request.getParameter("state");
+    StateRecord stateRecord = handler.getStateDb().getState(state);
     try {
-      handler.finalize("issuer", request.getParameterMap());
+      handler.finalize((String) stateRecord.getClaims().get("iss"), request.getParameterMap());
     } catch (MissingRequiredAttributeException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
