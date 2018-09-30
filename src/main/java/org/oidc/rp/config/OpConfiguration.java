@@ -24,14 +24,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.oidc.common.ServiceName;
 import org.oidc.msg.DeserializationException;
 import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceContext;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableMap;
 
 /**
  * This class contains configuration needed for the communication with an OP.
@@ -67,6 +65,7 @@ public class OpConfiguration {
    * @throws DeserializationException
    *           If the JSON file cannot be deserialized for any reason.
    */
+  @SuppressWarnings("unchecked")
   public static Map<String, OpConfiguration> parseFromJson(String jsonFile)
       throws DeserializationException {
     Map<String, Object> configs;
@@ -97,27 +96,10 @@ public class OpConfiguration {
         }
       }
       opConfiguration.getServiceContext().setRedirectUris(redirectUris);
-      Map<String, Object> services = (Map<String, Object>) map.get("services");
-      for (String service : services.keySet()) {
-        if (getServiceName(service) != null) {
-          ServiceConfig serviceConfig = new ServiceConfig();
-          serviceConfig.setServiceName(getServiceName(service));
-          opConfiguration.getServiceConfigs().add(serviceConfig);
-        }
-      }
+      opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       result.put(key, opConfiguration);
     }
     return result;
-  }
-
-  protected static ServiceName getServiceName(String key) {
-    return ImmutableMap.<String, ServiceName>builder()
-        .put("ProviderInfoDiscovery", ServiceName.PROVIDER_INFO_DISCOVERY)
-        .put("Registration", ServiceName.REGISTRATION).put("Webfinger", ServiceName.WEBFINGER)
-        .put("Authorization", ServiceName.AUTHORIZATION)
-        .put("AccessToken", ServiceName.ACCESS_TOKEN)
-        .put("RefreshAccessToken", ServiceName.REFRESH_ACCESS_TOKEN)
-        .put("UserInfo", ServiceName.USER_INFO).build().get(key);
   }
 
   public ServiceContext getServiceContext() {
