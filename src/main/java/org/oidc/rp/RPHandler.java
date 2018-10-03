@@ -70,7 +70,7 @@ public class RPHandler {
     this.stateDb = stateDb;
   }
 
-  public List<String> begin(String issuer, String userId)
+  public RPBeginResponse begin(String issuer, String userId)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
     client = setupClient(issuer, userId);
@@ -87,7 +87,11 @@ public class RPHandler {
     }
     ResponseMessage response = finalizeAuthentication(client, issuer, urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
-      // return response;
+      /* TODO: return error. python version returns  
+      'state': authorization_response['state'],
+      'error': authorization_response['error']
+      but does not handle them at all
+      */
     }
 
     // TODO: Check whether response is error or not
@@ -192,7 +196,7 @@ public class RPHandler {
    * @throws UnsupportedSerializationTypeException
    */
   @SuppressWarnings("unchecked")
-  protected List<String> initializeAuthentication(Client client, String state,
+  protected RPBeginResponse initializeAuthentication(Client client, String state,
       Map<String, Object> requestArguments)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
@@ -241,11 +245,8 @@ public class RPHandler {
     state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), state);
     defaultRequestArguments.put("state", state);
     stateDb.storeStateKeyForNonce((String) defaultRequestArguments.get("nonce"), state);
-    List<String> uriAndState = new ArrayList<String>();
-    uriAndState.add(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
-        .getRequestParameters(defaultRequestArguments).getUrl());
-    uriAndState.add(state);
-    return uriAndState;
+    return new RPBeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
+        .getRequestParameters(defaultRequestArguments).getUrl(), state);
   }
 
   protected void getIssuerViaWebfinger(Service webfinger, String resource) {
@@ -312,4 +313,5 @@ public class RPHandler {
   public State getStateDb() {
     return stateDb;
   }
+  
 }
