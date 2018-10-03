@@ -26,8 +26,11 @@ import java.util.Map;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
 import org.oidc.common.UnsupportedSerializationTypeException;
+import org.oidc.common.ValueException;
 import org.oidc.msg.DeserializationException;
+import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.SerializationException;
+import org.oidc.msg.oauth2.ResponseMessage;
 import org.oidc.msg.oidc.AuthenticationResponse;
 import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.config.OpConfiguration;
@@ -76,14 +79,17 @@ public class RPHandler {
   }
 
   public void finalize(String issuer, String urlEncodedResponseBody)
-      throws MissingRequiredAttributeException, DeserializationException {
+      throws MissingRequiredAttributeException, DeserializationException, ValueException, InvalidClaimException {
 
     Client client = issuer2Client.get(issuer);
     if (client == null) {
       throw new MissingRequiredAttributeException("Could not resolve client for the issuer");
     }
-    AuthenticationResponse authResponse = finalizeAuthentication(client, issuer,
-        urlEncodedResponseBody);
+    ResponseMessage response = finalizeAuthentication(client, issuer, urlEncodedResponseBody);
+    if (response.indicatesErrorResponseMessage()) {
+      // return response;
+    }
+
     // TODO: Check whether response is error or not
     // TODO: Depending on response type resolve access token and id token
     // TODO: Depending on response type and configuration resolve userinfo response
@@ -91,13 +97,30 @@ public class RPHandler {
     // TODO: what about id token? How it that returned?
   }
 
-  protected AuthenticationResponse finalizeAuthentication(Client client, String issuer,
-      String urlEncodedResponseBody) throws DeserializationException {
+  protected ResponseMessage finalizeAuthentication(Client client, String issuer,
+      String urlEncodedResponseBody) throws DeserializationException, ValueException,
+      InvalidClaimException, MissingRequiredAttributeException {
+
     Service service = getService(ServiceName.AUTHORIZATION, client.getServiceContext());
-    AuthenticationResponse response = (AuthenticationResponse) service
+    ResponseMessage response = (AuthenticationResponse) service
         .parseResponse(urlEncodedResponseBody);
-    //TODO.. check if error or success response and move on.
-    return null;
+    if (response.indicatesErrorResponseMessage()) {
+      return response;
+    }
+    AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
+    // TODO: Following assumes state should always in response (and is generated to request). Verify
+    // and remove this tag.
+    String state = (String) authenticationResponse.getClaims().get("state");
+    String issuerByState = getStateDb().getIssuer(state);
+    if (issuerByState == null) {
+      throw new ValueException(String.format("Could not resolve issuer for state '%s'", state));
+    }
+    if (!issuerByState.equals(issuer)) {
+      throw new ValueException(
+          String.format("Issuer mismatch, '%s' != '%s'", issuerByState, issuer));
+    }
+    service.updateServiceContext(authenticationResponse, state);
+    return authenticationResponse;
   }
 
   protected Client setupClient(String issuer, String userId)
@@ -112,7 +135,7 @@ public class RPHandler {
       }
     }
     // No prestored client, we try to perform webfinger and register the client.
-    if (userId == null) {
+    if (issuer == null && userId == null) {
       throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
     }
     Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
