@@ -17,12 +17,13 @@
 package org.oidc.rp;
 
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
+import org.oidc.common.MessageType;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
 import org.oidc.common.UnsupportedSerializationTypeException;
@@ -31,7 +32,10 @@ import org.oidc.msg.DeserializationException;
 import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.SerializationException;
 import org.oidc.msg.oauth2.ResponseMessage;
+import org.oidc.msg.oidc.AccessTokenResponse;
+import org.oidc.msg.oidc.AuthenticationRequest;
 import org.oidc.msg.oidc.AuthenticationResponse;
+import org.oidc.msg.oidc.IDToken;
 import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.config.OpConfiguration;
 import org.oidc.rp.http.HttpClientWrapper;
@@ -78,8 +82,52 @@ public class RPHandler {
     return initializeAuthentication(client, null, null);
   }
 
+  // TODO: implementation
+  protected ResponseMessage getAccessTokenResponse(String state, Client client) {
+    // This method should visit the token endpoint, verify the response message and id token
+    // possibly contained by it.
+    return null;
+  }
+
+  // TODO: return type for resolveTokens returning id token and access token
+  protected void resolveTokens(AuthenticationResponse authenticationResponse, String state,
+      Client client) {
+    AuthenticationRequest request = (AuthenticationRequest) stateDb.getItem(state,
+        MessageType.AUTHORIZATION_REQUEST);
+    String responseTypes = (String) request.getClaims().get("response_type");
+    // if response_type contains id_token we should have it in authentication response
+    IDToken idToken = null;
+    String accessToken = null;
+    if (Pattern.compile("\\bid_token\\b").matcher(responseTypes).find()
+        && authenticationResponse.getVerifiedIdToken() != null) {
+      idToken = authenticationResponse.getVerifiedIdToken();
+    }
+    if (Pattern.compile("\\btoken\\b").matcher(responseTypes).find()
+        && authenticationResponse.getClaims().containsKey("access_token")) {
+      accessToken = (String) authenticationResponse.getClaims().get("access_token");
+    }
+    // Having no id token at this point or having code in response type but not having access
+    // token implies need to visit token endpoint..
+    if (idToken == null
+        || (accessToken == null && Pattern.compile("\\bcode\\b").matcher(responseTypes).find())) {
+      ResponseMessage response = getAccessTokenResponse(state, client);
+      if (response.indicatesErrorResponseMessage()) {
+        // TODO: return/throw error
+      }
+      AccessTokenResponse accessTokenResponse = (AccessTokenResponse) response;
+      accessToken = (String) accessTokenResponse.getClaims().get("access_token");
+      if (accessTokenResponse.getVerifiedIdToken() != null) {
+        idToken = accessTokenResponse.getVerifiedIdToken();
+      }
+    }
+    // TODO: return access and id token
+
+  }
+
+  // TODO: return type for finalize to return results
   public void finalize(String issuer, String urlEncodedResponseBody)
-      throws MissingRequiredAttributeException, DeserializationException, ValueException, InvalidClaimException {
+      throws MissingRequiredAttributeException, DeserializationException, ValueException,
+      InvalidClaimException {
 
     Client client = issuer2Client.get(issuer);
     if (client == null) {
@@ -87,18 +135,20 @@ public class RPHandler {
     }
     ResponseMessage response = finalizeAuthentication(client, issuer, urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
-      /* TODO: return error. python version returns  
-      'state': authorization_response['state'],
-      'error': authorization_response['error']
-      but does not handle them at all
-      */
+      /*
+       * TODO: return error. python version returns 'state': authorization_response['state'],
+       * 'error': authorization_response['error'] but does not handle them at all?
+       */
+      return;
     }
-
-    // TODO: Check whether response is error or not
-    // TODO: Depending on response type resolve access token and id token
-    // TODO: Depending on response type and configuration resolve userinfo response
+    AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
+    // TODO: Following assumes state should always in response (and is generated to request). Verify
+    // this and remove this tag.
+    String state = (String) authenticationResponse.getClaims().get("state");
+    /** tokens = */ resolveTokens(authenticationResponse, state, client);
+    // TODO: if userinfo service is configured and we access token, visit it.
     // TODO: Return userinfo response, access_token and state
-    // TODO: what about id token? How it that returned?
+    // TODO: what about id token? How is that returned and where? Assumed to be used via response?
   }
 
   protected ResponseMessage finalizeAuthentication(Client client, String issuer,
@@ -113,7 +163,7 @@ public class RPHandler {
     }
     AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
     // TODO: Following assumes state should always in response (and is generated to request). Verify
-    // and remove this tag.
+    // this and remove this tag.
     String state = (String) authenticationResponse.getClaims().get("state");
     String issuerByState = getStateDb().getIssuer(state);
     if (issuerByState == null) {
@@ -313,5 +363,5 @@ public class RPHandler {
   public State getStateDb() {
     return stateDb;
   }
-  
+
 }
