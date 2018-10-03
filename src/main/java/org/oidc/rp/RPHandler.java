@@ -138,16 +138,19 @@ public class RPHandler {
     if (issuer == null && userId == null) {
       throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
     }
-    Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
-    if (webfinger != null) {
-      getIssuerViaWebfinger(webfinger, userId);
-      if (opConfiguration.getServiceContext().getIssuer() == null) {
+    if (issuer == null) {
+      // Webfinger only if issuer is not given
+      Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
+      if (webfinger != null) {
+        getIssuerViaWebfinger(webfinger, userId);
+        if (opConfiguration.getServiceContext().getIssuer() == null) {
+          throw new MissingRequiredAttributeException(
+              "Could not resolve the issuer for userId=" + userId);
+        }
+      } else {
         throw new MissingRequiredAttributeException(
-            "Could not resolve the issuer for userId=" + userId);
+            "Webfinger service must be configured if no issuer is provided");
       }
-    } else {
-      throw new MissingRequiredAttributeException(
-          "Webfinger service must be configured if no issuer is provided");
     }
     Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
         opConfiguration.getServiceContext());
