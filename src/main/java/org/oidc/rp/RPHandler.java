@@ -363,5 +363,9 @@ public class RPHandler {
   public State getStateDb() {
     return stateDb;
   }
+  
+  public OpConfiguration getOpConfiguration() {
+    return opConfiguration;
+  }
 
 }
