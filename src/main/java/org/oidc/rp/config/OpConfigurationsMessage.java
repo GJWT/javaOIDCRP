@@ -27,6 +27,7 @@ import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.ParameterVerification;
 import org.oidc.msg.ParameterVerificationDefinition;
 import org.oidc.msg.SerializationException;
+import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.msg.validator.ClaimValidator;
 import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceConfigMessage;
@@ -62,7 +63,10 @@ public class OpConfigurationsMessage extends AbstractMessage {
       paramVerDefs.put("redirect_uris", ParameterVerification.REQUIRED_LIST_OF_STRINGS.getValue());
       paramVerDefs.put("services",
           new ParameterVerificationDefinition(new ServicesConfigurationValidator(), true));
+      paramVerDefs.put("client_prefs",
+          new ParameterVerificationDefinition(new ClientPreferencesValidator(), false));
     }
+
 
     public SingleOpConfiguration(Map<String, Object> claims) {
       super(claims);
@@ -141,5 +145,26 @@ public class OpConfigurationsMessage extends AbstractMessage {
       throw new InvalidClaimException("Invalid contents in the services configuration");
     }
   }
+  
+  protected class ClientPreferencesValidator implements ClaimValidator<RegistrationRequest> {
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public RegistrationRequest validate(Object value) throws InvalidClaimException {
+      if (!(value instanceof Map)) {
+        throw new InvalidClaimException(
+            String.format("Parameter '%s' is not of expected type", value));
+      }
+      Map<String, Object> map = (Map<String, Object>) value;
+      RegistrationRequest clientPreferences = new RegistrationRequest(map);
+      clientPreferences.getParameterVerificationDefinitions().remove("redirect_uris");
+      if (clientPreferences.verify()) {
+        return clientPreferences;
+      }
+      throw new InvalidClaimException(
+          "Invalid contents in the client preferences: " + clientPreferences.getError().getDetails());
+    }
+  }
+
 
 }
