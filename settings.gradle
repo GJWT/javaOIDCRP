@@ -1,0 +1,3 @@
+rootProject.name = 'javaOIDCRP'
+include ':javaOIDCRP-example-app'
+project(':javaOIDCRP-example-app' ).projectDir = new File(rootProject.dir, 'example-app' )
