@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.oidc.msg.DeserializationException;
+import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceContext;
 
@@ -66,7 +67,7 @@ public class OpConfiguration {
    *           If the JSON file cannot be deserialized for any reason.
    */
   @SuppressWarnings("unchecked")
-  public static Map<String, OpConfiguration> parseFromJson(String jsonFile)
+  public static Map<String, OpConfiguration> parseFromJson(String jsonFile, String baseUrl)
       throws DeserializationException {
     Map<String, Object> configs;
     try {
@@ -91,11 +92,11 @@ public class OpConfiguration {
       List<String> redirectUris = (List<String>) map.get("redirect_uris");
       if (redirectUris != null) {
         for (int i = 0; i < redirectUris.size(); i++) {
-          // TODO: make baseUrl configurable
-          redirectUris.set(i, redirectUris.get(i).replace("${BASEURL}", "https://example.org"));
+          redirectUris.set(i, redirectUris.get(i).replace("${BASEURL}", baseUrl));
         }
       }
       opConfiguration.getServiceContext().setRedirectUris(redirectUris);
+      opConfiguration.getServiceContext().setClientPreferences((RegistrationRequest) map.get("client_prefs"));
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       result.put(key, opConfiguration);
     }
