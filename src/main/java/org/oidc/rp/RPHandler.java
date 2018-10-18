@@ -36,6 +36,7 @@ import org.oidc.msg.oidc.AccessTokenResponse;
 import org.oidc.msg.oidc.AuthenticationRequest;
 import org.oidc.msg.oidc.AuthenticationResponse;
 import org.oidc.msg.oidc.IDToken;
+import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.config.OpConfiguration;
 import org.oidc.rp.http.HttpClientWrapper;
@@ -218,6 +219,13 @@ public class RPHandler {
         opConfiguration.getServiceContext());
     if (registration != null) {
       doDynamicRegistration(registration);
+    } else {
+      RegistrationRequest preferences = opConfiguration.getServiceContext().getClientPreferences();
+      RegistrationResponse behaviour = new RegistrationResponse(preferences.getClaims());
+      behaviour.addClaim("client_id", opConfiguration.getServiceContext().getClientId());
+      behaviour.addClaim("client_secret", opConfiguration.getServiceContext().getClientSecret());
+      behaviour.addClaim("redirect_uris", opConfiguration.getServiceContext().getRedirectUris());
+      opConfiguration.getServiceContext().setBehavior(behaviour);
     }
     // TODO: continue the sequence
     Client client = new Client();
