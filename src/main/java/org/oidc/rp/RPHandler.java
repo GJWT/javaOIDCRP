@@ -80,7 +80,14 @@ public class RPHandler {
       RequestArgumentProcessingException, SerializationException {
     client = setupClient(issuer, userId);
     // TODO: Do we ever need to set state or requestArguments?
-    return initializeAuthentication(client, null, null);
+    Map<String, Object> reqArgs = null;
+    for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
+        if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
+        	reqArgs = serviceConfig.getRequestArguments();
+        }
+    }
+      
+    return initializeAuthentication(client, null, reqArgs);
   }
 
   // TODO: implementation
