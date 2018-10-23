@@ -33,6 +33,7 @@ dependencies {
     compile group: 'org.oidc', name: 'javaOIDCMessage', version: '1.0-SNAPSHOT'
     compile group: 'org.oidc', name: 'javaOIDCService', version: '1.0-SNAPSHOT'
     compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5'
+    compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.9.2'
     compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.9.6'
     compile 'commons-validator:commons-validator:1.6'
