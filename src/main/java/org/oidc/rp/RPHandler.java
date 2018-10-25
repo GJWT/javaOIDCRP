@@ -36,6 +36,7 @@ import org.oidc.msg.oidc.AccessTokenResponse;
 import org.oidc.msg.oidc.AuthenticationRequest;
 import org.oidc.msg.oidc.AuthenticationResponse;
 import org.oidc.msg.oidc.IDToken;
+import org.oidc.msg.oidc.OpenIDSchema;
 import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.msg.oidc.RegistrationResponse;
 import org.oidc.rp.config.OpConfiguration;
@@ -75,7 +76,7 @@ public class RPHandler {
     this.stateDb = stateDb;
   }
 
-  public RPBeginResponse begin(String issuer, String userId)
+  public BeginResponse begin(String issuer, String userId)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
     client = setupClient(issuer, userId);
@@ -98,7 +99,7 @@ public class RPHandler {
   }
 
   // TODO: return type for resolveTokens returning id token and access token
-  protected void resolveTokens(AuthenticationResponse authenticationResponse, String state,
+  protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse, String state,
       Client client) {
     AuthenticationRequest request = (AuthenticationRequest) stateDb.getItem(state,
         MessageType.AUTHORIZATION_REQUEST);
@@ -128,12 +129,11 @@ public class RPHandler {
         idToken = accessTokenResponse.getVerifiedIdToken();
       }
     }
-    // TODO: return access and id token
+    return new ResolveTokensResponse(idToken, accessToken);
 
   }
 
-  // TODO: return type for finalize to return results
-  public void finalize(String issuer, String urlEncodedResponseBody)
+  public FinalizeResponse finalize(String issuer, String urlEncodedResponseBody)
       throws MissingRequiredAttributeException, DeserializationException, ValueException,
       InvalidClaimException {
 
@@ -143,20 +143,21 @@ public class RPHandler {
     }
     ResponseMessage response = finalizeAuthentication(client, issuer, urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
-      /*
-       * TODO: return error. python version returns 'state': authorization_response['state'],
-       * 'error': authorization_response['error'] but does not handle them at all?
-       */
-      return;
+      return new FinalizeResponse((String) response.getClaims().get("state"),
+          (String) response.getClaims().get("error"),
+          (String) response.getClaims().get("error_description"),
+          (String) response.getClaims().get("error_uri"));
     }
     AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
     // TODO: Following assumes state should always in response (and is generated to request). Verify
     // this and remove this tag.
     String state = (String) authenticationResponse.getClaims().get("state");
-    /** tokens = */ resolveTokens(authenticationResponse, state, client);
+    ResolveTokensResponse resp = resolveTokens(authenticationResponse, state, client);
     // TODO: if userinfo service is configured and we access token, visit it.
-    // TODO: Return userinfo response, access_token and state
-    // TODO: what about id token? How is that returned and where? Assumed to be used via response?
+    // TODO: Combine userinfo response and id token (for openidschema)
+    // for now we just copy id token claims as user claims..temp hack.
+    return new FinalizeResponse(state, new OpenIDSchema(resp.getIDToken().getClaims()),
+        resp.getAccessToken());
   }
 
   protected ResponseMessage finalizeAuthentication(Client client, String issuer,
@@ -261,7 +262,7 @@ public class RPHandler {
    * @throws UnsupportedSerializationTypeException
    */
   @SuppressWarnings("unchecked")
-  protected RPBeginResponse initializeAuthentication(Client client, String state,
+  protected BeginResponse initializeAuthentication(Client client, String state,
       Map<String, Object> requestArguments)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
@@ -310,7 +311,7 @@ public class RPHandler {
     state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), state);
     defaultRequestArguments.put("state", state);
     stateDb.storeStateKeyForNonce((String) defaultRequestArguments.get("nonce"), state);
-    return new RPBeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
+    return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
         .getRequestParameters(defaultRequestArguments).getUrl(), state);
   }
 
