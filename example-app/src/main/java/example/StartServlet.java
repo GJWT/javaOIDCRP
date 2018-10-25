@@ -26,7 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.UnsupportedSerializationTypeException;
 import org.oidc.msg.SerializationException;
-import org.oidc.rp.RPBeginResponse;
+import org.oidc.rp.BeginResponse;
 import org.oidc.rp.RPHandler;
 import org.oidc.service.base.RequestArgumentProcessingException;
 
@@ -60,7 +60,7 @@ public class StartServlet extends AbstractRpHandlerServlet {
       return;
     }
     try {
-      RPBeginResponse beginResponse = rpHandler.begin(issuer, null);
+      BeginResponse beginResponse = rpHandler.begin(issuer, null);
       if (beginResponse.getRedirectUri() != null) {
         response.sendRedirect(beginResponse.getRedirectUri());
       }
