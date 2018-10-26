@@ -36,22 +36,29 @@ import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.Message;
 import org.oidc.service.Service;
 import org.oidc.service.base.HttpArguments;
+import org.oidc.service.base.HttpHeader;
 
 public class HttpClientWrapper {
   
-  public static void doRequest(HttpArguments httpArguments, Service service) {
+  public static void doRequest(HttpArguments httpArguments, Service service, String stateKey) {
     if (HttpMethod.GET.equals(httpArguments.getHttpMethod())) {
       HttpGet httpGet = new HttpGet(httpArguments.getUrl());
-      doRequest(httpGet, service);
+      doRequest(httpGet, service, stateKey);
     } else if (HttpMethod.POST.equals(httpArguments.getHttpMethod())) {
       HttpPost httpPost = new HttpPost(httpArguments.getUrl());
-      httpPost.setHeader("Content-Type", "application/json");
+      HttpHeader header = httpArguments.getHeader();
+      if (header.getContentType() != null) {
+        httpPost.setHeader("Content-Type", header.getContentType());
+      }
+      if (header.getAuthorization() != null) {
+        httpPost.setHeader("Authorization", header.getAuthorization());
+      }
       StringEntity entity;
       try {
         entity = new StringEntity(httpArguments.getBody());
         System.out.println("Sending payload: " + httpArguments.getBody());
         httpPost.setEntity(entity);
-        doRequest(httpPost, service);
+        doRequest(httpPost, service, stateKey);
       } catch (UnsupportedEncodingException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
@@ -59,14 +66,14 @@ public class HttpClientWrapper {
     }
   }
   
-  protected static void doRequest(HttpUriRequest request, Service service) {
+  protected static void doRequest(HttpUriRequest request, Service service, String stateKey) {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       try (CloseableHttpResponse response = httpClient.execute(request)) {
         System.out.println(response.getStatusLine());
         HttpEntity entity = response.getEntity();
         try {
           Message message = service.parseResponse(EntityUtils.toString(entity));
-          service.updateServiceContext(message);
+          service.updateServiceContext(message, stateKey);
           System.out.println(service.getServiceContext().getIssuer());
         } catch (DeserializationException | MissingRequiredAttributeException | ValueException | InvalidClaimException e) {
           //TODO: inform caller
