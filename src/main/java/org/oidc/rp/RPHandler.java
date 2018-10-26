@@ -30,6 +30,7 @@ import org.oidc.common.UnsupportedSerializationTypeException;
 import org.oidc.common.ValueException;
 import org.oidc.msg.DeserializationException;
 import org.oidc.msg.InvalidClaimException;
+import org.oidc.msg.Message;
 import org.oidc.msg.SerializationException;
 import org.oidc.msg.oauth2.ResponseMessage;
 import org.oidc.msg.oidc.AccessTokenResponse;
@@ -49,6 +50,7 @@ import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceContext;
 import org.oidc.service.data.InMemoryStateImpl;
 import org.oidc.service.data.State;
+import org.oidc.service.oidc.AccessToken;
 import org.oidc.service.oidc.Authentication;
 import org.oidc.service.oidc.ProviderInfoDiscovery;
 import org.oidc.service.oidc.Registration;
@@ -92,9 +94,21 @@ public class RPHandler {
   }
 
   // TODO: implementation
-  protected ResponseMessage getAccessTokenResponse(String state, Client client) {
+  protected Message getAccessTokenResponse(String state, Client client) {
     // This method should visit the token endpoint, verify the response message and id token
     // possibly contained by it.
+    Map<String, Object> requestArguments = new HashMap<String, Object>();
+    requestArguments.put("state", state);
+    Service accessToken = getService(ServiceName.ACCESS_TOKEN, client.getServiceContext());
+    try {
+      HttpArguments httpArguments = accessToken.getRequestParameters(requestArguments);
+      HttpClientWrapper.doRequest(httpArguments, accessToken, state);
+      return accessToken.getResponseMessage();
+    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
+        | SerializationException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
     return null;
   }
 
@@ -119,8 +133,8 @@ public class RPHandler {
     // token implies need to visit token endpoint..
     if (idToken == null
         || (accessToken == null && Pattern.compile("\\bcode\\b").matcher(responseTypes).find())) {
-      ResponseMessage response = getAccessTokenResponse(state, client);
-      if (response.indicatesErrorResponseMessage()) {
+      Message response = getAccessTokenResponse(state, client);
+      if (((ResponseMessage)response).indicatesErrorResponseMessage()) {
         // TODO: return/throw error
       }
       AccessTokenResponse accessTokenResponse = (AccessTokenResponse) response;
@@ -320,7 +334,7 @@ public class RPHandler {
     requestParams.put(Constants.WEBFINGER_RESOURCE, resource);
     try {
       HttpArguments httpArguments = webfinger.getRequestParameters(requestParams);
-      HttpClientWrapper.doRequest(httpArguments, webfinger);
+      HttpClientWrapper.doRequest(httpArguments, webfinger, null);
     } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
         | SerializationException e) {
       // TODO Auto-generated catch block
@@ -331,7 +345,7 @@ public class RPHandler {
   protected void fetchIssuerConfiguration(Service providerInfoDiscovery) {
     try {
       HttpArguments httpArguments = providerInfoDiscovery.getRequestParameters(null);
-      HttpClientWrapper.doRequest(httpArguments, providerInfoDiscovery);
+      HttpClientWrapper.doRequest(httpArguments, providerInfoDiscovery, null);
     } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
         | SerializationException e) {
       // TODO Auto-generated catch block
@@ -343,7 +357,7 @@ public class RPHandler {
     try {
       Map<String, Object> requestArguments = new HashMap<>();
       HttpArguments httpArguments = registration.getRequestParameters(requestArguments);
-      HttpClientWrapper.doRequest(httpArguments, registration);
+      HttpClientWrapper.doRequest(httpArguments, registration, null);
     } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
         | SerializationException e) {
       // TODO Auto-generated catch block
@@ -365,6 +379,9 @@ public class RPHandler {
         }
         if (ServiceName.AUTHORIZATION.equals(serviceName)) {
           return new Authentication(serviceContext, stateDb, serviceConfig);
+        }
+        if (ServiceName.ACCESS_TOKEN.equals(serviceName)) {
+          return new AccessToken(serviceContext, stateDb, serviceConfig);
         }
         // TODO support other services
       }
