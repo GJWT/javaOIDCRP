@@ -112,8 +112,7 @@ public class RPHandler {
     }
     return null;
   }
-  
-  
+
   // TODO: return type for resolveTokens returning id token and access token
   protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse,
       String state, Client client) {
@@ -175,25 +174,29 @@ public class RPHandler {
     if (resp.indicatesError()) {
       return new FinalizeResponse((AbstractResponse) resp);
     }
-    UserInfo service = (UserInfo)getService(ServiceName.USER_INFO, client.getServiceContext());
+    OpenIDSchema userClaims = new OpenIDSchema(resp.getIDToken().getClaims());
+    // If there is userinfo endpoint, we look for more claims
+    UserInfo service = (UserInfo) getService(ServiceName.USER_INFO, client.getServiceContext());
     if (service != null) {
       try {
         Map<String, Object> requestArguments = new HashMap<String, Object>();
         requestArguments.put("access_token", resp.getAccessToken());
         HttpArguments httpArguments = service.getRequestParameters(requestArguments);
         HttpClientWrapper.doRequest(httpArguments, service, state);
-        Message userInfoResp = service.getResponseMessage();
-        //TODO: response message handling
+        OpenIDSchema userInfoClaims = (OpenIDSchema) service.getResponseMessage();
+        if (userInfoClaims.indicatesErrorResponseMessage()) {
+          return new FinalizeResponse(state, (String) userInfoClaims.getClaims().get("error"),
+              (String) userInfoClaims.getClaims().get("error_description"),
+              (String) userInfoClaims.getClaims().get("error_uri"));
+        }
+        userClaims.getClaims().putAll(userInfoClaims.getClaims());
       } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
           | SerializationException e) {
         // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }
-    // TODO: Combine userinfo response and id token (for openidschema)
-    // for now we just copy id token claims as user claims..temp hack.
-    return new FinalizeResponse(state, new OpenIDSchema(resp.getIDToken().getClaims()),
-        resp.getAccessToken());
+    return new FinalizeResponse(state, userClaims, resp.getAccessToken());
   }
 
   protected ResponseMessage finalizeAuthentication(Client client, String issuer,
