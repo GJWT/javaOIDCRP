@@ -54,6 +54,7 @@ import org.oidc.service.oidc.AccessToken;
 import org.oidc.service.oidc.Authentication;
 import org.oidc.service.oidc.ProviderInfoDiscovery;
 import org.oidc.service.oidc.Registration;
+import org.oidc.service.oidc.UserInfo;
 import org.oidc.service.oidc.Webfinger;
 import org.oidc.service.util.Constants;
 
@@ -85,11 +86,11 @@ public class RPHandler {
     // TODO: Do we ever need to set state or requestArguments?
     Map<String, Object> reqArgs = null;
     for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
-        if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
-        	reqArgs = serviceConfig.getRequestArguments();
-        }
+      if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
+        reqArgs = serviceConfig.getRequestArguments();
+      }
     }
-      
+
     return initializeAuthentication(client, null, reqArgs);
   }
 
@@ -113,8 +114,8 @@ public class RPHandler {
   }
 
   // TODO: return type for resolveTokens returning id token and access token
-  protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse, String state,
-      Client client) {
+  protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse,
+      String state, Client client) {
     AuthenticationRequest request = (AuthenticationRequest) stateDb.getItem(state,
         MessageType.AUTHORIZATION_REQUEST);
     String responseTypes = (String) request.getClaims().get("response_type");
@@ -134,8 +135,11 @@ public class RPHandler {
     if (idToken == null
         || (accessToken == null && Pattern.compile("\\bcode\\b").matcher(responseTypes).find())) {
       Message response = getAccessTokenResponse(state, client);
-      if (((ResponseMessage)response).indicatesErrorResponseMessage()) {
-        // TODO: return/throw error
+      if (((ResponseMessage) response).indicatesErrorResponseMessage()) {
+        return new ResolveTokensResponse((String) response.getClaims().get("state"),
+            (String) response.getClaims().get("error"),
+            (String) response.getClaims().get("error_description"),
+            (String) response.getClaims().get("error_uri"));
       }
       AccessTokenResponse accessTokenResponse = (AccessTokenResponse) response;
       accessToken = (String) accessTokenResponse.getClaims().get("access_token");
@@ -167,6 +171,9 @@ public class RPHandler {
     // this and remove this tag.
     String state = (String) authenticationResponse.getClaims().get("state");
     ResolveTokensResponse resp = resolveTokens(authenticationResponse, state, client);
+    if (resp.indicatesError()) {
+      return new FinalizeResponse((AbstractResponse) resp);
+    }
     // TODO: if userinfo service is configured and we access token, visit it.
     // TODO: Combine userinfo response and id token (for openidschema)
     // for now we just copy id token claims as user claims..temp hack.
@@ -383,6 +390,9 @@ public class RPHandler {
         if (ServiceName.ACCESS_TOKEN.equals(serviceName)) {
           return new AccessToken(serviceContext, stateDb, serviceConfig);
         }
+        if (ServiceName.USER_INFO.equals(serviceName)) {
+          return new UserInfo(serviceContext, stateDb, serviceConfig);
+        }
         // TODO support other services
       }
     }
@@ -396,7 +406,7 @@ public class RPHandler {
   public State getStateDb() {
     return stateDb;
   }
-  
+
   public OpConfiguration getOpConfiguration() {
     return opConfiguration;
   }

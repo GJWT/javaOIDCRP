@@ -19,12 +19,12 @@ package org.oidc.rp;
 import org.oidc.msg.oidc.IDToken;
 
 /** Class wrapping RP Handler resolve tokens response. */
-class ResolveTokensResponse {
-  
+class ResolveTokensResponse extends AbstractResponse {
+
   /** Verified id token. */
-  final IDToken idToken;
+  private final IDToken idToken;
   /** Access token. */
-  final String accessToken;
+  private final String accessToken;
 
   /**
    * Constructor.
@@ -37,6 +37,24 @@ class ResolveTokensResponse {
   ResolveTokensResponse(IDToken idToken, String accessToken) {
     this.idToken = idToken;
     this.accessToken = accessToken;
+  }
+
+  /**
+   * Constructor.
+   * 
+   * @param state
+   *          state parameter
+   * @param errorCode
+   *          error code
+   * @param errorDescription
+   *          error description
+   * @param errorUri
+   *          error uri
+   */
+  ResolveTokensResponse(String state, String errorCode, String errorDescription, String errorUri) {
+    super(state, errorCode, errorDescription, errorUri);
+    idToken = null;
+    accessToken = null;
   }
 
   /**

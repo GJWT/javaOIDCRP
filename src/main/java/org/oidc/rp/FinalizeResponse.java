@@ -19,16 +19,8 @@ package org.oidc.rp;
 import org.oidc.msg.oidc.OpenIDSchema;
 
 /** Class wrapping RP Handler finalize response. */
-public class FinalizeResponse {
+public class FinalizeResponse extends AbstractResponse {
 
-  /** State parameter. */
-  private final String state;
-  /** Error code. */
-  private final String errorCode;
-  /** Error description. */
-  private final String errorDescription;
-  /** Error uri. */
-  private final String errorUri;
   /** User claims. */
   private final OpenIDSchema userClaims;
   /** Access token. */
@@ -47,10 +39,7 @@ public class FinalizeResponse {
    *          error uri
    */
   FinalizeResponse(String state, String errorCode, String errorDescription, String errorUri) {
-    this.state = state;
-    this.errorCode = errorCode;
-    this.errorDescription = errorDescription;
-    this.errorUri = errorUri;
+    super(state, errorCode, errorDescription, errorUri);
     userClaims = null;
     accessToken = null;
   }
@@ -66,48 +55,21 @@ public class FinalizeResponse {
    *          access token
    */
   FinalizeResponse(String state, OpenIDSchema userClaims, String accessToken) {
-    this.state = state;
+    super(state, null, null, null);
     this.userClaims = userClaims;
     this.accessToken = accessToken;
-    errorCode = null;
-    errorDescription = null;
-    errorUri = null;
   }
 
   /**
-   * Get state parameter.
+   * Constructor.
    * 
-   * @return state parameter
+   * @param response
+   *          response to copy the fields from. Must not be null.
    */
-  public String getState() {
-    return state;
-  }
-
-  /**
-   * Get error code.
-   * 
-   * @return error code
-   */
-  public String getErrorCode() {
-    return errorCode;
-  }
-
-  /**
-   * Get error description.
-   * 
-   * @return error description
-   */
-  public String getErrorDescription() {
-    return errorDescription;
-  }
-
-  /**
-   * Get error uri.
-   * 
-   * @return error uri
-   */
-  public String getErrorUri() {
-    return errorUri;
+  FinalizeResponse(AbstractResponse response) {
+    super(response);
+    userClaims = null;
+    accessToken = null;
   }
 
   /**
@@ -126,15 +88,6 @@ public class FinalizeResponse {
    */
   public String getAccessToken() {
     return accessToken;
-  }
-
-  /**
-   * Whether the response is a error response.
-   * 
-   * @return whether the response is a error response
-   */
-  public boolean indicatesError() {
-    return errorCode != null;
   }
 
 }
