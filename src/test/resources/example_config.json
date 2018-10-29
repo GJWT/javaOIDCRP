@@ -1,0 +1,42 @@
+{
+    "mockIssuer": {
+        "issuer": "https://accounts.example.com/",
+        "client_id": "xxxxxxxxx.apps.exampleusercontent.com",
+        "client_secret": "2222222222",
+        "redirect_uris": ["${BASEURL}/authz_cb/mockIssuer"],
+        "client_prefs": {
+            "response_types": ["code"],
+            "scope": ["openid", "profile", "email"],
+            "token_endpoint_auth_method": "client_secret_post"
+        },
+        "allow": {
+            "issuer_mismatch": true
+        },
+        "services": {
+            "Registration": {},
+            "ProviderInfoDiscovery": {},
+            "Authorization": {
+                "pre_construct": {
+                    "claims": {
+                        "id_token": {
+                            "email": {
+                                "essential": true
+                            }
+                        }
+                    },
+                    "request_method": "request_uri"
+                },
+                "post_construct": {
+                    "request_method": "request_uri",
+                    "request_object_signing_alg": "none",
+                    "request_object_encryption_alg": "RSA1_5",
+                    "request_object_encryption_enc": "A128CBC-HS256",
+                    "target": "https://localhost:8080/oicrp/rp-request_uri-enc"
+                }
+             },
+            "AccessToken": {},
+            "RefreshAccessToken": {},
+            "UserInfo": {"default_authn_method": "bearer_body"}
+        }
+    }
+}
