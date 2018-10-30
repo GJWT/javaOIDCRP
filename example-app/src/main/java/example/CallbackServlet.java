@@ -49,18 +49,23 @@ public class CallbackServlet extends AbstractRpHandlerServlet {
     System.out.println("iss: " + stateRecord.getClaims().get("iss"));
     System.out.println("query: " + request.getQueryString());
     try {
-      FinalizeResponse resp = rpHandler.finalize((String) stateRecord.getClaims().get("iss"), request.getRequestURL() + "?" + request.getQueryString());
+      FinalizeResponse resp = rpHandler.finalize((String) stateRecord.getClaims().get("iss"), 
+          request.getRequestURL() + "?" + request.getQueryString());
+      StringBuilder html = new StringBuilder("<p>Response state: " + resp.getState() + "</p>");
       if (resp.indicatesError()) {
-    	  System.out.println("resp state: " + resp.getState());
-    	  System.out.println("resp error code: " + resp.getErrorCode());
-      }else {
-    	  System.out.println("resp state: " + resp.getState());
-    	  OpenIDSchema userClaims = resp.getUserClaims();
-    	  for (String key:userClaims.getClaims().keySet()) {
-    		  System.out.println(key +"->" +userClaims.getClaims().get(key));
-    	  }
+        html.append("<h1>Error response</h1>");
+        html.append("<p>Error response code: " + resp.getErrorCode() + "</p>");
+      } else {
+        html.append("<h1>Authentication succeeded</h1>");
+        OpenIDSchema userClaims = resp.getUserClaims();
+        html.append("<p>Successful response, got the following claims:</p>");
+        for (String key:userClaims.getClaims().keySet()) {
+          html.append("<p> - " + key + " = " + userClaims.getClaims().get(key) + "</p>");
+        }
       }
-    } catch (MissingRequiredAttributeException | DeserializationException | ValueException | InvalidClaimException e) {
+      writeHtmlBodyOutput(response, html.toString() + getIssuerList(request));
+    } catch (MissingRequiredAttributeException | DeserializationException | ValueException 
+        | InvalidClaimException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }

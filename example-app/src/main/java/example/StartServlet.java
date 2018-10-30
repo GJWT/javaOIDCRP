@@ -17,7 +17,6 @@
 package example;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -39,24 +38,13 @@ public class StartServlet extends AbstractRpHandlerServlet {
       throws ServletException, IOException {
     String issuer = request.getParameter(PARAM_NAME_ISSUER);
     if (issuer == null) {
-      String html = "";
-      for (String config : rpHandlers.keySet()) {
-        html = html + "<p>" + config + ": " + rpHandlers.get(config).getOpConfiguration().getServiceContext().getIssuer() + "</p>";
-      }
-      String action = request.getContextPath() + ServletConfiguration.HOME_SERVLET_MAPPING;
-      html = html + "<h1>Fill issuer here or give it in the URL parameter 'issuer'</h1>\n"
-          + "<form method=\"GET\" action=\"" + action + "\">"
-          + "  <input type=\"text\" name=\"issuer\" /><input type=\"submit\" name=\"OK\"/ >"
-          + "</form>";
-      writeHtmlBodyOutput(response, html);
+      writeHtmlBodyOutput(response, getIssuerList(request));
       return;
-    } else {
-      
     }
-    
     RPHandler rpHandler = getRpHandlerViaIssuer(issuer);
     if (rpHandler == null) {
-      writeHtmlBodyOutput(response, "Could not find a configuration with the given issuer: " + issuer);
+      writeHtmlBodyOutput(response, 
+          "Could not find a configuration with the given issuer: " + issuer);
       return;
     }
     try {
