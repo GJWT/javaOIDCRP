@@ -80,13 +80,4 @@ public class StartServlet extends AbstractRpHandlerServlet {
     }
     return null;
   }
-  
-  protected void writeHtmlBodyOutput(HttpServletResponse response, String output) throws IOException {
-    PrintWriter writer = response.getWriter();
-    writer.println("<html><body>");
-    writer.println(output);
-    writer.println("</body></html>");
-    writer.close();    
-  }
-
 }

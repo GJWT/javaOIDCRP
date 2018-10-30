@@ -16,10 +16,13 @@
 
 package example;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.rp.RPHandler;
 
@@ -38,4 +41,11 @@ public abstract class AbstractRpHandlerServlet extends HttpServlet {
     }
   }
 
+  protected void writeHtmlBodyOutput(HttpServletResponse response, String output) throws IOException {
+    PrintWriter writer = response.getWriter();
+    writer.println("<html><body>");
+    writer.println(output);
+    writer.println("</body></html>");
+    writer.close();    
+  }
 }
