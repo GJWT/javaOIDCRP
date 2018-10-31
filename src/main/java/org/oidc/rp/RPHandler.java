@@ -350,8 +350,14 @@ public class RPHandler {
     state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), state);
     defaultRequestArguments.put("state", state);
     stateDb.storeStateKeyForNonce((String) defaultRequestArguments.get("nonce"), state);
-    return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
-        .getRequestParameters(defaultRequestArguments).getUrl(), state);
+    try {
+      return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
+          .getRequestParameters(defaultRequestArguments).getUrl(), state);
+    } catch (RequestArgumentProcessingException e) {
+      System.out.println(e.getError().getDetails());
+      e.printStackTrace();
+      return null;
+    }
   }
 
   protected void getIssuerViaWebfinger(Service webfinger, String resource) {
