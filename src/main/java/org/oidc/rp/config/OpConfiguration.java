@@ -57,26 +57,25 @@ public class OpConfiguration {
   }
 
   /**
-   * Parses a map of OP configurations from the given JSON file.
+   * Parses a map of OP configurations from the given JSON data.
    * 
-   * @param jsonFile
-   *          The JSON file containing one or more OP configurations.
+   * @param data
+   *          The JSON as byte array containing one or more OP configurations.
    * @return The map of parsed OP configurations. Keys contain the identifiers and values the
    *         corresponding OP configuration in the JSON the file.
    * @throws DeserializationException
    *           If the JSON file cannot be deserialized for any reason.
    */
   @SuppressWarnings("unchecked")
-  public static Map<String, OpConfiguration> parseFromJson(String jsonFile, String baseUrl)
+  public static Map<String, OpConfiguration> parseFromJson(byte[] data, String baseUrl)
       throws DeserializationException {
     Map<String, Object> configs;
     try {
-      byte[] data = Files.readAllBytes(Paths.get(jsonFile));
       ObjectMapper objectMapper = new ObjectMapper();
       configs = objectMapper.readValue(data, new TypeReference<HashMap<String, Object>>() {
       });
     } catch (IOException e) {
-      throw new DeserializationException("Could not deserialize the JSON file from " + jsonFile, e);
+      throw new DeserializationException("Could not deserialize the JSON file from " +  new String(data), e);
     }
     OpConfigurationsMessage configsMsg = new OpConfigurationsMessage(configs);
     if (!configsMsg.verify()) {
@@ -100,7 +99,27 @@ public class OpConfiguration {
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       result.put(key, opConfiguration);
     }
-    return result;
+    return result;    
+  }
+  
+  /**
+   * Parses a map of OP configurations from the given JSON file.
+   * 
+   * @param jsonFile
+   *          The JSON file containing one or more OP configurations.
+   * @return The map of parsed OP configurations. Keys contain the identifiers and values the
+   *         corresponding OP configuration in the JSON the file.
+   * @throws DeserializationException
+   *           If the JSON file cannot be deserialized for any reason.
+   */
+  public static Map<String, OpConfiguration> parseFromJson(String jsonFile, String baseUrl)
+      throws DeserializationException {
+    try {
+      byte[] data = Files.readAllBytes(Paths.get(jsonFile));
+      return parseFromJson(data, baseUrl);
+    } catch (IOException e) {
+      throw new DeserializationException("Could not read the data from JSON file " + jsonFile, e);
+    }
   }
 
   public ServiceContext getServiceContext() {
