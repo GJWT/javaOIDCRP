@@ -40,7 +40,20 @@ import org.oidc.service.base.HttpHeader;
 
 public class HttpClientWrapper {
   
-  public static void doRequest(HttpArguments httpArguments, Service service, String stateKey) {
+  /**
+   * Sends the given request to the remote server, parses the response and updates the service
+   * context.
+   * 
+   * @param httpArguments The HTTP request parameters used for constructing the HTTP request.
+   * @param service The service used for parsing the response and updating the service context.
+   * @param stateKey The optional state key.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the response message is unexpected.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws IOException If the underlying HTTP client communication fails.
+   */
+  public static void doRequest(HttpArguments httpArguments, Service service, String stateKey) 
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, IOException {
     if (HttpMethod.GET.equals(httpArguments.getHttpMethod())) {
       HttpGet httpGet = new HttpGet(httpArguments.getUrl());
       doRequest(httpGet, service, stateKey);
@@ -66,7 +79,20 @@ public class HttpClientWrapper {
     }
   }
   
-  protected static void doRequest(HttpUriRequest request, Service service, String stateKey) {
+  /**
+   * Sends the given request to the remote server, parses the response and updates the service
+   * context.
+   * 
+   * @param request The HTTP request to be sent to the remote server.
+   * @param service The service used for parsing the response and updating the service context.
+   * @param stateKey The optional state key.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the response message is unexpected.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws IOException If the underlying HTTP client communication fails.
+   */
+  protected static void doRequest(HttpUriRequest request, Service service, String stateKey)
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, IOException {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       try (CloseableHttpResponse response = httpClient.execute(request)) {
         System.out.println(response.getStatusLine());
@@ -75,16 +101,13 @@ public class HttpClientWrapper {
           Message message = service.parseResponse(EntityUtils.toString(entity));
           service.updateServiceContext(message, stateKey);
           System.out.println(service.getServiceContext().getIssuer());
-        } catch (DeserializationException | MissingRequiredAttributeException | ValueException | InvalidClaimException e) {
-          //TODO: inform caller
-          e.printStackTrace();
+        } catch (DeserializationException  e) {
+          throw new ValueException("The response message could not be deserialized", e);
         } finally {
           EntityUtils.consume(entity);
         }
       } 
-    } catch (IOException e) {
-      //TODO: inform caller
-    }
+    } 
   }
 
 }
