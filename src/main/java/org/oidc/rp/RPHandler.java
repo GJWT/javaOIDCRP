@@ -16,6 +16,7 @@
 
 package org.oidc.rp;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashMap;
@@ -81,7 +82,8 @@ public class RPHandler {
 
   public BeginResponse begin(String issuer, String userId)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
-      RequestArgumentProcessingException, SerializationException {
+      RequestArgumentProcessingException, SerializationException, ValueException, 
+      InvalidClaimException {
     client = setupClient(issuer, userId);
     // TODO: Do we ever need to set state or requestArguments?
     Map<String, Object> reqArgs = null;
@@ -94,28 +96,26 @@ public class RPHandler {
     return initializeAuthentication(client, null, reqArgs);
   }
 
-  // TODO: implementation
-  protected Message getAccessTokenResponse(String state, Client client) {
+  protected Message getAccessTokenResponse(String state, Client client) 
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+      RequestArgumentProcessingException {
     // This method should visit the token endpoint, verify the response message and id token
     // possibly contained by it.
     Map<String, Object> requestArguments = new HashMap<String, Object>();
     requestArguments.put("state", state);
     Service accessToken = getService(ServiceName.ACCESS_TOKEN, client.getServiceContext());
-    try {
-      HttpArguments httpArguments = accessToken.getRequestParameters(requestArguments);
-      HttpClientWrapper.doRequest(httpArguments, accessToken, state);
-      return accessToken.getResponseMessage();
-    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
-        | SerializationException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+    if (!callRemoteService(accessToken, requestArguments, state)) {
+      //TODO: handle
+      return null;
     }
-    return null;
+    return accessToken.getResponseMessage();
   }
 
   // TODO: return type for resolveTokens returning id token and access token
   protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse,
-      String state, Client client) {
+      String state, Client client)
+          throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+          RequestArgumentProcessingException {
     AuthenticationRequest request = (AuthenticationRequest) stateDb.getItem(state,
         MessageType.AUTHORIZATION_REQUEST);
     String responseTypes = (String) request.getClaims().get("response_type");
@@ -153,7 +153,7 @@ public class RPHandler {
 
   public FinalizeResponse finalize(String issuer, String urlEncodedResponseBody)
       throws MissingRequiredAttributeException, DeserializationException, ValueException,
-      InvalidClaimException {
+      InvalidClaimException, RequestArgumentProcessingException {
 
     Client client = issuer2Client.get(issuer);
     if (client == null) {
@@ -178,23 +178,18 @@ public class RPHandler {
     // If there is userinfo endpoint, we look for more claims
     UserInfo service = (UserInfo) getService(ServiceName.USER_INFO, client.getServiceContext());
     if (service != null) {
-      try {
-        Map<String, Object> requestArguments = new HashMap<String, Object>();
-        requestArguments.put("access_token", resp.getAccessToken());
-        HttpArguments httpArguments = service.getRequestParameters(requestArguments);
-        HttpClientWrapper.doRequest(httpArguments, service, state);
-        OpenIDSchema userInfoClaims = (OpenIDSchema) service.getResponseMessage();
-        if (userInfoClaims.indicatesErrorResponseMessage()) {
-          return new FinalizeResponse(state, (String) userInfoClaims.getClaims().get("error"),
-              (String) userInfoClaims.getClaims().get("error_description"),
-              (String) userInfoClaims.getClaims().get("error_uri"));
-        }
-        userClaims.getClaims().putAll(userInfoClaims.getClaims());
-      } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
-          | SerializationException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
+      Map<String, Object> requestArguments = new HashMap<String, Object>();
+      requestArguments.put("access_token", resp.getAccessToken());
+      if (!callRemoteService(service, requestArguments, state)) {
+        //TODO: did not succeed
       }
+      OpenIDSchema userInfoClaims = (OpenIDSchema) service.getResponseMessage();
+      if (userInfoClaims.indicatesErrorResponseMessage()) {
+        return new FinalizeResponse(state, (String) userInfoClaims.getClaims().get("error"),
+            (String) userInfoClaims.getClaims().get("error_description"),
+            (String) userInfoClaims.getClaims().get("error_uri"));
+      }
+      userClaims.getClaims().putAll(userInfoClaims.getClaims());
     }
     return new FinalizeResponse(state, userClaims, resp.getAccessToken());
   }
@@ -226,7 +221,8 @@ public class RPHandler {
   }
 
   protected Client setupClient(String issuer, String userId)
-      throws MissingRequiredAttributeException {
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+      RequestArgumentProcessingException {
 
     // See if the client has been stored already by issuer
     if (issuer != null || opConfiguration.getServiceContext().getIssuer() != null) {
@@ -244,7 +240,11 @@ public class RPHandler {
       // Webfinger only if issuer is not given
       Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
       if (webfinger != null) {
-        getIssuerViaWebfinger(webfinger, userId);
+        Map<String, Object> requestParams = new HashMap<>();
+        requestParams.put(Constants.WEBFINGER_RESOURCE, userId);
+        if (!callRemoteService(webfinger, requestParams, null)) {
+          //TODO: handle this
+        }
         if (opConfiguration.getServiceContext().getIssuer() == null) {
           throw new MissingRequiredAttributeException(
               "Could not resolve the issuer for userId=" + userId);
@@ -257,7 +257,9 @@ public class RPHandler {
     Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
         opConfiguration.getServiceContext());
     if (providerInfoDiscovery != null) {
-      fetchIssuerConfiguration(providerInfoDiscovery);
+      if (!callRemoteService(providerInfoDiscovery, null)) {
+        
+      }
     } else {
       throw new MissingRequiredAttributeException(
           "ProviderInfoDiscovery service must be configured");
@@ -265,7 +267,9 @@ public class RPHandler {
     Service registration = getService(ServiceName.REGISTRATION,
         opConfiguration.getServiceContext());
     if (registration != null) {
-      doDynamicRegistration(registration);
+      if (!callRemoteService(registration, null)) {
+        
+      }
     } else {
       RegistrationRequest preferences = opConfiguration.getServiceContext().getClientPreferences();
       RegistrationResponse behaviour = new RegistrationResponse(preferences.getClaims());
@@ -360,40 +364,25 @@ public class RPHandler {
     }
   }
 
-  protected void getIssuerViaWebfinger(Service webfinger, String resource) {
-    Map<String, Object> requestParams = new HashMap<>();
-    requestParams.put(Constants.WEBFINGER_RESOURCE, resource);
-    try {
-      HttpArguments httpArguments = webfinger.getRequestParameters(requestParams);
-      HttpClientWrapper.doRequest(httpArguments, webfinger, null);
-    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
-        | SerializationException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+  protected boolean callRemoteService(Service service, String state)
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+      RequestArgumentProcessingException {
+    return callRemoteService(service, new HashMap<String, Object>(), state);
   }
-
-  protected void fetchIssuerConfiguration(Service providerInfoDiscovery) {
+  
+  protected boolean callRemoteService(Service service, Map<String, Object> requestArguments, 
+      String state) 
+          throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+          RequestArgumentProcessingException {
     try {
-      HttpArguments httpArguments = providerInfoDiscovery.getRequestParameters(null);
-      HttpClientWrapper.doRequest(httpArguments, providerInfoDiscovery, null);
-    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
-        | SerializationException e) {
+      HttpArguments httpArguments = service.getRequestParameters(requestArguments);
+      HttpClientWrapper.doRequest(httpArguments, service, state);
+    } catch (UnsupportedSerializationTypeException | SerializationException | IOException e) {
       // TODO Auto-generated catch block
       e.printStackTrace();
+      return false;
     }
-  }
-
-  protected void doDynamicRegistration(Service registration) {
-    try {
-      Map<String, Object> requestArguments = new HashMap<>();
-      HttpArguments httpArguments = registration.getRequestParameters(requestArguments);
-      HttpClientWrapper.doRequest(httpArguments, registration, null);
-    } catch (UnsupportedSerializationTypeException | RequestArgumentProcessingException
-        | SerializationException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    }
+    return true;
   }
 
   protected Service getService(ServiceName serviceName, ServiceContext serviceContext) {
