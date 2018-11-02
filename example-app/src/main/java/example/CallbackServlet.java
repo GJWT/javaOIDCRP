@@ -27,6 +27,7 @@ import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.oidc.OpenIDSchema;
 import org.oidc.rp.FinalizeResponse;
 import org.oidc.rp.RPHandler;
+import org.oidc.service.base.RequestArgumentProcessingException;
 import org.oidc.service.data.StateRecord;
 
 public class CallbackServlet extends AbstractRpHandlerServlet {
@@ -65,9 +66,8 @@ public class CallbackServlet extends AbstractRpHandlerServlet {
       }
       writeHtmlBodyOutput(response, html.toString() + getIssuerList(request));
     } catch (MissingRequiredAttributeException | DeserializationException | ValueException 
-        | InvalidClaimException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
+        | InvalidClaimException | RequestArgumentProcessingException e) {
+      throw new ServletException(e.getMessage(), e);
     }
   }
 }

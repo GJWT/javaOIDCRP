@@ -24,6 +24,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.UnsupportedSerializationTypeException;
+import org.oidc.common.ValueException;
+import org.oidc.msg.InvalidClaimException;
 import org.oidc.msg.SerializationException;
 import org.oidc.rp.BeginResponse;
 import org.oidc.rp.RPHandler;
@@ -53,7 +55,8 @@ public class StartServlet extends AbstractRpHandlerServlet {
         response.sendRedirect(beginResponse.getRedirectUri());
       }
     } catch (MissingRequiredAttributeException | UnsupportedSerializationTypeException
-        | RequestArgumentProcessingException | SerializationException e) {
+        | RequestArgumentProcessingException | SerializationException | ValueException | 
+        InvalidClaimException e) {
       e.printStackTrace();
       writeHtmlBodyOutput(response, "Error: " + e.getMessage());
     }
