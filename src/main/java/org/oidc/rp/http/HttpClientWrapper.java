@@ -98,7 +98,7 @@ public class HttpClientWrapper {
         System.out.println(response.getStatusLine());
         HttpEntity entity = response.getEntity();
         try {
-          Message message = service.parseResponse(EntityUtils.toString(entity));
+          Message message = service.parseResponse(EntityUtils.toString(entity), stateKey);
           service.updateServiceContext(message, stateKey);
           System.out.println(service.getServiceContext().getIssuer());
         } catch (DeserializationException  e) {
