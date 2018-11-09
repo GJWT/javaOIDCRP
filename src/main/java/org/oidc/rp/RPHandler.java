@@ -104,10 +104,7 @@ public class RPHandler {
     Map<String, Object> requestArguments = new HashMap<String, Object>();
     requestArguments.put("state", state);
     Service accessToken = getService(ServiceName.ACCESS_TOKEN, client.getServiceContext());
-    if (!callRemoteService(accessToken, requestArguments, state)) {
-      //TODO: handle
-      return null;
-    }
+    callRemoteService(accessToken, requestArguments, state);
     return accessToken.getResponseMessage();
   }
 
@@ -180,9 +177,7 @@ public class RPHandler {
     if (service != null) {
       Map<String, Object> requestArguments = new HashMap<String, Object>();
       requestArguments.put("access_token", resp.getAccessToken());
-      if (!callRemoteService(service, requestArguments, state)) {
-        //TODO: did not succeed
-      }
+      callRemoteService(service, requestArguments, state);
       OpenIDSchema userInfoClaims = (OpenIDSchema) service.getResponseMessage();
       if (userInfoClaims.indicatesErrorResponseMessage()) {
         return new FinalizeResponse(state, (String) userInfoClaims.getClaims().get("error"),
@@ -242,9 +237,7 @@ public class RPHandler {
       if (webfinger != null) {
         Map<String, Object> requestParams = new HashMap<>();
         requestParams.put(Constants.WEBFINGER_RESOURCE, userId);
-        if (!callRemoteService(webfinger, requestParams, null)) {
-          //TODO: handle this
-        }
+        callRemoteService(webfinger, requestParams, null);
         if (opConfiguration.getServiceContext().getIssuer() == null) {
           throw new MissingRequiredAttributeException(
               "Could not resolve the issuer for userId=" + userId);
@@ -257,9 +250,7 @@ public class RPHandler {
     Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
         opConfiguration.getServiceContext());
     if (providerInfoDiscovery != null) {
-      if (!callRemoteService(providerInfoDiscovery, null)) {
-        
-      }
+      callRemoteService(providerInfoDiscovery, null);
     } else {
       throw new MissingRequiredAttributeException(
           "ProviderInfoDiscovery service must be configured");
@@ -267,9 +258,7 @@ public class RPHandler {
     Service registration = getService(ServiceName.REGISTRATION,
         opConfiguration.getServiceContext());
     if (registration != null) {
-      if (!callRemoteService(registration, null)) {
-        
-      }
+      callRemoteService(registration, null);
     } else {
       RegistrationRequest preferences = opConfiguration.getServiceContext().getClientPreferences();
       RegistrationResponse behaviour = new RegistrationResponse(preferences.getClaims());
@@ -364,13 +353,13 @@ public class RPHandler {
     }
   }
 
-  protected boolean callRemoteService(Service service, String state)
+  protected void callRemoteService(Service service, String state)
       throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
       RequestArgumentProcessingException {
-    return callRemoteService(service, new HashMap<String, Object>(), state);
+    callRemoteService(service, new HashMap<String, Object>(), state);
   }
   
-  protected boolean callRemoteService(Service service, Map<String, Object> requestArguments, 
+  protected void callRemoteService(Service service, Map<String, Object> requestArguments, 
       String state) 
           throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
           RequestArgumentProcessingException {
@@ -378,11 +367,8 @@ public class RPHandler {
       HttpArguments httpArguments = service.getRequestParameters(requestArguments);
       HttpClientWrapper.doRequest(httpArguments, service, state);
     } catch (UnsupportedSerializationTypeException | SerializationException | IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-      return false;
+      throw new ValueException("Could not communicate with the remote server", e);
     }
-    return true;
   }
 
   protected Service getService(ServiceName serviceName, ServiceContext serviceContext) {
