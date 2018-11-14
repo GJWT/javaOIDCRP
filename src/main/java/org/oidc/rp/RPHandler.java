@@ -257,7 +257,8 @@ public class RPHandler {
       callRemoteService(providerInfoDiscovery, null);
     } else {
       throw new MissingRequiredAttributeException(
-          "ProviderInfoDiscovery service must be configured");
+          "ProviderInfoDiscovery service must be configured to fetch configuration for "
+          + opConfiguration.getServiceContext().getIssuer());
     }
     Service registration = getService(ServiceName.REGISTRATION,
         opConfiguration.getServiceContext());
