@@ -48,6 +48,11 @@ public class OpConfiguration {
    * The configurations for the list of services related to this OP configuration.
    */
   private List<ServiceConfig> serviceConfigs;
+  
+  /**
+   * The configuration claims used for initializing service context and service configurations.
+   */
+  private Map<String, Object> configurationClaims;
 
   /**
    * Constructor.
@@ -109,6 +114,7 @@ public class OpConfiguration {
           }
         }
       }
+      opConfiguration.setConfigurationClaims(map);
       result.put(key, opConfiguration);
     }
     return result;    
@@ -148,5 +154,13 @@ public class OpConfiguration {
 
   public void setServiceConfigs(List<ServiceConfig> configs) {
     serviceConfigs = configs;
+  }
+  
+  public Map<String, Object> getConfigurationClaims() {
+    return configurationClaims;
+  }
+  
+  public void setConfigurationClaims(Map<String, Object> claims) {
+    configurationClaims = claims;
   }
 }
