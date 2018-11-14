@@ -60,7 +60,7 @@ public class OpConfigurationsMessage extends AbstractMessage {
       paramVerDefs.put("issuer", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
       paramVerDefs.put("client_id", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
       paramVerDefs.put("client_secret", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
-      paramVerDefs.put("redirect_uris", ParameterVerification.REQUIRED_LIST_OF_STRINGS.getValue());
+      paramVerDefs.put("redirect_uris", ParameterVerification.OPTIONAL_LIST_OF_STRINGS.getValue());
       paramVerDefs.put("services",
           new ParameterVerificationDefinition(new ServicesConfigurationValidator(), true));
       paramVerDefs.put("client_prefs",
