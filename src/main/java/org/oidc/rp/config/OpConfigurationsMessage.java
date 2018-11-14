@@ -47,7 +47,8 @@ public class OpConfigurationsMessage extends AbstractMessage {
   protected static ServiceName getServiceName(String key) {
     return ImmutableMap.<String, ServiceName>builder()
         .put("ProviderInfoDiscovery", ServiceName.PROVIDER_INFO_DISCOVERY)
-        .put("Registration", ServiceName.REGISTRATION).put("Webfinger", ServiceName.WEBFINGER)
+        .put("Registration", ServiceName.REGISTRATION)
+        .put("WebFinger", ServiceName.WEBFINGER)
         .put("Authorization", ServiceName.AUTHORIZATION)
         .put("AccessToken", ServiceName.ACCESS_TOKEN)
         .put("RefreshAccessToken", ServiceName.REFRESH_ACCESS_TOKEN)
@@ -61,6 +62,7 @@ public class OpConfigurationsMessage extends AbstractMessage {
       paramVerDefs.put("client_id", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
       paramVerDefs.put("client_secret", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
       paramVerDefs.put("redirect_uris", ParameterVerification.OPTIONAL_LIST_OF_STRINGS.getValue());
+      paramVerDefs.put("resource", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
       paramVerDefs.put("services",
           new ParameterVerificationDefinition(new ServicesConfigurationValidator(), true));
       paramVerDefs.put("client_prefs",
