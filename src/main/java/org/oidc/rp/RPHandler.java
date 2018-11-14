@@ -87,12 +87,16 @@ public class RPHandler {
     client = setupClient(issuer, userId);
     // TODO: Do we ever need to set state or requestArguments?
     Map<String, Object> reqArgs = null;
+    boolean authorizationExists = false;
     for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
       if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
         reqArgs = serviceConfig.getRequestArguments();
+        authorizationExists = true;
       }
     }
-
+    if (!authorizationExists) {
+      return new BeginResponse(null, null);
+    }
     return initializeAuthentication(client, null, reqArgs);
   }
 
@@ -261,7 +265,8 @@ public class RPHandler {
       callRemoteService(registration, null);
     } else {
       RegistrationRequest preferences = opConfiguration.getServiceContext().getClientPreferences();
-      RegistrationResponse behaviour = new RegistrationResponse(preferences.getClaims());
+      RegistrationResponse behaviour = preferences == null ? 
+          new RegistrationResponse() : new RegistrationResponse(preferences.getClaims());
       behaviour.addClaim("client_id", opConfiguration.getServiceContext().getClientId());
       behaviour.addClaim("client_secret", opConfiguration.getServiceContext().getClientSecret());
       behaviour.addClaim("redirect_uris", opConfiguration.getServiceContext().getRedirectUris());
