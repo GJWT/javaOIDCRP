@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.oidc.common.ServiceName;
 import org.oidc.msg.DeserializationException;
 import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.service.base.ServiceConfig;
@@ -75,7 +76,8 @@ public class OpConfiguration {
       configs = objectMapper.readValue(data, new TypeReference<HashMap<String, Object>>() {
       });
     } catch (IOException e) {
-      throw new DeserializationException("Could not deserialize the JSON file from " +  new String(data), e);
+      throw new DeserializationException("Could not deserialize the JSON file from " 
+          +  new String(data), e);
     }
     OpConfigurationsMessage configsMsg = new OpConfigurationsMessage(configs);
     if (!configsMsg.verify()) {
@@ -95,8 +97,18 @@ public class OpConfiguration {
         }
       }
       opConfiguration.getServiceContext().setRedirectUris(redirectUris);
-      opConfiguration.getServiceContext().setClientPreferences((RegistrationRequest) map.get("client_prefs"));
+      opConfiguration.getServiceContext().setClientPreferences((RegistrationRequest) 
+          map.get("client_prefs"));
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
+      for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
+        if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
+          if (opConfiguration.getServiceContext().getRedirectUris() == null || 
+              opConfiguration.getServiceContext().getRedirectUris().isEmpty()) {
+            throw new DeserializationException(
+                "'redirect_uris' must not be null if authorization service exists");
+          }
+        }
+      }
       result.put(key, opConfiguration);
     }
     return result;    
