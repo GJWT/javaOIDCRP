@@ -104,6 +104,10 @@ public class OpConfiguration {
       opConfiguration.getServiceContext().setRedirectUris(redirectUris);
       opConfiguration.getServiceContext().setClientPreferences((RegistrationRequest) 
           map.get("client_prefs"));
+      Map<String, Boolean> allow = (Map<String, Boolean>) map.get("allow");
+      if (allow != null && !allow.isEmpty()) {
+        opConfiguration.getServiceContext().setAllow((Map<String, Boolean>) map.get("allow"));
+      }
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
         if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
