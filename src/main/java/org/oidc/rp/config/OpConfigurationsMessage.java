@@ -17,6 +17,7 @@
 package org.oidc.rp.config;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +68,8 @@ public class OpConfigurationsMessage extends AbstractMessage {
           new ParameterVerificationDefinition(new ServicesConfigurationValidator(), true));
       paramVerDefs.put("client_prefs",
           new ParameterVerificationDefinition(new ClientPreferencesValidator(), false));
+      paramVerDefs.put("allow",
+          new ParameterVerificationDefinition(new AllowValidator(), false));
     }
 
 
@@ -167,6 +170,31 @@ public class OpConfigurationsMessage extends AbstractMessage {
           "Invalid contents in the client preferences: " + clientPreferences.getError().getDetails());
     }
   }
+  
+  protected class AllowValidator implements ClaimValidator<Map<String, Boolean>> {
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public Map<String, Boolean> validate(Object value) throws InvalidClaimException {
+      if (!(value instanceof Map)) {
+        throw new InvalidClaimException(
+            String.format("Parameter '%s' is not of expected type", value));
+      }
+      Map<String, Object> map = (Map<String, Object>) value;
+      Map<String, Boolean> result = new HashMap<>();
+      for (String key : map.keySet()) {
+        Object entry = map.get(key);
+        if (entry instanceof Boolean) {
+          result.put(key, (Boolean) entry);
+        } else if (entry instanceof String) {
+          result.put(key, Boolean.valueOf((String) entry));
+        } else {
+          throw new InvalidClaimException(
+              "Invalid contents in the allow map: '" + key + "' contains invalid value");
+        }
+      }
+      return result;
+    } 
+  }
 
 }
