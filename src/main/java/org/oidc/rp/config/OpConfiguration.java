@@ -30,6 +30,9 @@ import org.oidc.msg.oidc.RegistrationRequest;
 import org.oidc.service.base.ServiceConfig;
 import org.oidc.service.base.ServiceContext;
 
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
+import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -95,7 +98,16 @@ public class OpConfiguration {
       OpConfiguration opConfiguration = new OpConfiguration();
       opConfiguration.getServiceContext().setIssuer((String) map.get("issuer"));
       opConfiguration.getServiceContext().setClientId((String) map.get("client_id"));
-      opConfiguration.getServiceContext().setClientSecret((String) map.get("client_secret"));
+      String clientSecret = (String) map.get("client_secret");
+      if (!Strings.isNullOrEmpty(clientSecret)) {
+        opConfiguration.getServiceContext().setClientSecret(clientSecret);
+        try {
+          opConfiguration.getServiceContext().getKeyJar().addSymmetricKey("",
+              clientSecret.getBytes("UTF-8"), null);
+        } catch (ImportException | IOException | JWKException | ValueError e) {
+          throw new DeserializationException("Could not add the client secret to the key jar", e);
+        }
+      }
       List<String> redirectUris = (List<String>) map.get("redirect_uris");
       if (redirectUris != null) {
         for (int i = 0; i < redirectUris.size(); i++) {
