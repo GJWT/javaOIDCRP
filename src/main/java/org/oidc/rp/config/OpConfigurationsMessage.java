@@ -70,6 +70,7 @@ public class OpConfigurationsMessage extends AbstractMessage {
           new ParameterVerificationDefinition(new ClientPreferencesValidator(), false));
       paramVerDefs.put("allow",
           new ParameterVerificationDefinition(new AllowValidator(), false));
+      paramVerDefs.put("jwks_uri", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
     }
 
 
