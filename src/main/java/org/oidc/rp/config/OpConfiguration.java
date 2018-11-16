@@ -32,6 +32,7 @@ import org.oidc.service.base.ServiceContext;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 
 /**
  * This class contains configuration needed for the communication with an OP.
@@ -107,6 +108,10 @@ public class OpConfiguration {
       Map<String, Boolean> allow = (Map<String, Boolean>) map.get("allow");
       if (allow != null && !allow.isEmpty()) {
         opConfiguration.getServiceContext().setAllow((Map<String, Boolean>) map.get("allow"));
+      }
+      String jwksUri = (String) map.get("jwks_uri");
+      if (!Strings.isNullOrEmpty(jwksUri)) {
+        opConfiguration.getServiceContext().setJwksUri(jwksUri.replace("${BASEURL}", baseUrl));
       }
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
