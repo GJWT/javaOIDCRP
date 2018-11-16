@@ -71,6 +71,8 @@ public class OpConfigurationsMessage extends AbstractMessage {
       paramVerDefs.put("allow",
           new ParameterVerificationDefinition(new AllowValidator(), false));
       paramVerDefs.put("jwks_uri", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
+      paramVerDefs.put("PRIVATE_JWKS_PATH", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
+      paramVerDefs.put("PUBLIC_JWKS_PATH", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
     }
 
 
