@@ -112,7 +112,6 @@ public class RPHandler {
     return accessToken.getResponseMessage();
   }
 
-  // TODO: return type for resolveTokens returning id token and access token
   protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse,
       String state, Client client)
           throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
@@ -178,7 +177,7 @@ public class RPHandler {
     OpenIDSchema userClaims = new OpenIDSchema(resp.getIDToken().getClaims());
     // If there is userinfo endpoint, we look for more claims
     UserInfo service = (UserInfo) getService(ServiceName.USER_INFO, client.getServiceContext());
-    if (service != null) {
+    if (service != null && resp.getAccessToken() != null) {
       Map<String, Object> requestArguments = new HashMap<String, Object>();
       requestArguments.put("access_token", resp.getAccessToken());
       callRemoteService(service, requestArguments, state);
