@@ -33,6 +33,8 @@ import org.oidc.service.base.ServiceContext;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ImportException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.JWKException;
 import com.auth0.jwt.exceptions.oicmsg_exceptions.ValueError;
+import com.auth0.msg.KeyBundle;
+import com.auth0.msg.SYMKey;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -102,8 +104,10 @@ public class OpConfiguration {
       if (!Strings.isNullOrEmpty(clientSecret)) {
         opConfiguration.getServiceContext().setClientSecret(clientSecret);
         try {
-          opConfiguration.getServiceContext().getKeyJar().addSymmetricKey("",
-              clientSecret.getBytes("UTF-8"), null);
+          KeyBundle bundle = new KeyBundle();
+          bundle.append(new SYMKey("sig", clientSecret));
+          bundle.append(new SYMKey("ver", clientSecret));
+          opConfiguration.getServiceContext().getKeyJar().addKeyBundle("", bundle);
         } catch (ImportException | IOException | JWKException | ValueError e) {
           throw new DeserializationException("Could not add the client secret to the key jar", e);
         }
