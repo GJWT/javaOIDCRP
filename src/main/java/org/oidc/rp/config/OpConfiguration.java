@@ -98,16 +98,17 @@ public class OpConfiguration {
     for (String key : configs.keySet()) {
       Map<String, Object> map = (Map<String, Object>) configs.get(key);
       OpConfiguration opConfiguration = new OpConfiguration();
-      opConfiguration.getServiceContext().setIssuer((String) map.get("issuer"));
-      opConfiguration.getServiceContext().setClientId((String) map.get("client_id"));
+      ServiceContext serviceContext = opConfiguration.getServiceContext();
+      serviceContext.setIssuer((String) map.get("issuer"));
+      serviceContext.setClientId((String) map.get("client_id"));
       String clientSecret = (String) map.get("client_secret");
       if (!Strings.isNullOrEmpty(clientSecret)) {
-        opConfiguration.getServiceContext().setClientSecret(clientSecret);
+        serviceContext.setClientSecret(clientSecret);
         try {
           KeyBundle bundle = new KeyBundle();
           bundle.append(new SYMKey("sig", clientSecret));
           bundle.append(new SYMKey("ver", clientSecret));
-          opConfiguration.getServiceContext().getKeyJar().addKeyBundle("", bundle);
+          serviceContext.getKeyJar().addKeyBundle("", bundle);
         } catch (ImportException | IOException | JWKException | ValueError e) {
           throw new DeserializationException("Could not add the client secret to the key jar", e);
         }
@@ -118,22 +119,21 @@ public class OpConfiguration {
           redirectUris.set(i, redirectUris.get(i).replace("${BASEURL}", baseUrl));
         }
       }
-      opConfiguration.getServiceContext().setRedirectUris(redirectUris);
-      opConfiguration.getServiceContext().setClientPreferences((RegistrationRequest) 
-          map.get("client_prefs"));
+      serviceContext.setRedirectUris(redirectUris);
+      serviceContext.setClientPreferences((RegistrationRequest) map.get("client_prefs"));
       Map<String, Boolean> allow = (Map<String, Boolean>) map.get("allow");
       if (allow != null && !allow.isEmpty()) {
-        opConfiguration.getServiceContext().setAllow((Map<String, Boolean>) map.get("allow"));
+        serviceContext.setAllow((Map<String, Boolean>) map.get("allow"));
       }
       String jwksUri = (String) map.get("jwks_uri");
       if (!Strings.isNullOrEmpty(jwksUri)) {
-        opConfiguration.getServiceContext().setJwksUri(jwksUri.replace("${BASEURL}", baseUrl));
+        serviceContext.setJwksUri(jwksUri.replace("${BASEURL}", baseUrl));
       }
       opConfiguration.setServiceConfigs((List<ServiceConfig>) map.get("services"));
       for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
         if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
-          if (opConfiguration.getServiceContext().getRedirectUris() == null || 
-              opConfiguration.getServiceContext().getRedirectUris().isEmpty()) {
+          if (serviceContext.getRedirectUris() == null ||
+              serviceContext.getRedirectUris().isEmpty()) {
             throw new DeserializationException(
                 "'redirect_uris' must not be null if authorization service exists");
           }
