@@ -18,12 +18,12 @@ package org.oidc.rp;
 
 import java.io.IOException;
 import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.commons.codec.binary.Base64;
 import org.oidc.common.MessageType;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
@@ -321,7 +321,7 @@ public class RPHandler {
     // TODO: create project util for creating state/nonce
     byte[] rand = new byte[32];
     new SecureRandom().nextBytes(rand);
-    defaultRequestArguments.put("nonce", Base64.getUrlEncoder().encodeToString(rand));
+    defaultRequestArguments.put("nonce", Base64.encodeBase64URLSafeString(rand));
     // Set redirect_uri
     if (client.getServiceContext().getRedirectUris() != null
         && client.getServiceContext().getRedirectUris().size() > 0) {
