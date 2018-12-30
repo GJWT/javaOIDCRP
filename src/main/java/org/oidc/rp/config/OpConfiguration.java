@@ -99,6 +99,7 @@ public class OpConfiguration {
       Map<String, Object> map = (Map<String, Object>) configs.get(key);
       OpConfiguration opConfiguration = new OpConfiguration();
       ServiceContext serviceContext = opConfiguration.getServiceContext();
+      serviceContext.setBaseUrl(baseUrl);
       serviceContext.setIssuer((String) map.get("issuer"));
       serviceContext.setClientId((String) map.get("client_id"));
       String clientSecret = (String) map.get("client_secret");
