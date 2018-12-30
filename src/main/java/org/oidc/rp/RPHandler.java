@@ -97,7 +97,7 @@ public class RPHandler {
     if (!authorizationExists) {
       return new BeginResponse(null, null);
     }
-    return initializeAuthentication(client, null, reqArgs);
+    return initializeAuthentication(client, reqArgs);
   }
 
   protected Message getAccessTokenResponse(String state, Client client) 
@@ -286,12 +286,9 @@ public class RPHandler {
    * 
    * @param client
    *          Client instance, having service context for configuring the request.
-   * @param state
-   *          For fetching existing client instance if client is set as null.
    * @param requestArguments
    *          Non-default request arguments.
-   * @return List of strings, first value is url for authentication/authorization endpoint, second
-   *         value is state parameter.
+   * @return url for authentication/authorization endpoint and state parameter.
    * @throws MissingRequiredAttributeException
    *           if both client and state are null.
    * @throws SerializationException
@@ -299,55 +296,28 @@ public class RPHandler {
    * @throws UnsupportedSerializationTypeException
    */
   @SuppressWarnings("unchecked")
-  protected BeginResponse initializeAuthentication(Client client, String state,
+  protected BeginResponse initializeAuthentication(Client client,
       Map<String, Object> requestArguments)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
 
     if (client == null) {
-      if (state == null) {
-        throw new MissingRequiredAttributeException("Either client or state must be provided");
-      }
-      client = issuer2Client.get(stateDb.getIssuer(state));
-      if (client == null) {
-        throw new MissingRequiredAttributeException("Not able to fetch client by state key");
-      }
+      throw new MissingRequiredAttributeException("Client or state must be provided");
     }
-    // Set default arguments nonce, redirect_uri, scope and response type
     Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
-    // Set client_id
-    defaultRequestArguments.put("client_id", client.getServiceContext().getClientId());
-    // Set nonce
-    // TODO: create project util for creating state/nonce
-    byte[] rand = new byte[32];
-    new SecureRandom().nextBytes(rand);
-    defaultRequestArguments.put("nonce", Base64.encodeBase64URLSafeString(rand));
-    // Set redirect_uri
-    if (client.getServiceContext().getRedirectUris() != null
-        && client.getServiceContext().getRedirectUris().size() > 0) {
-      defaultRequestArguments.put("redirect_uri",
-          client.getServiceContext().getRedirectUris().get(0));
-    }
     RegistrationResponse behavior = client.getServiceContext().getBehavior();
     if (behavior != null) {
-      // set scope
+      // by default we request for all scopes
       if (behavior.getClaims().containsKey("scope")) {
         defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
       }
-      // Set response type
-      if (behavior.getClaims().containsKey("response_types")) {
-        defaultRequestArguments.put("response_type",
-            (String) ((List<String>) behavior.getClaims().get("response_types")).get(0));
-      }
     }
-
     // Set non-default request arguments
     if (requestArguments != null) {
       defaultRequestArguments.putAll(requestArguments);
     }
-    state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), state);
-    defaultRequestArguments.put("state", state);
-    stateDb.storeStateKeyForNonce((String) defaultRequestArguments.get("nonce"), state);
+    String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(),
+        (String) defaultRequestArguments.get("state"));
     try {
       return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
           .getRequestParameters(defaultRequestArguments).getUrl(), state);
