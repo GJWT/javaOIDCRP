@@ -85,19 +85,16 @@ public class RPHandler {
       RequestArgumentProcessingException, SerializationException, ValueException, 
       InvalidClaimException {
     client = setupClient(issuer, userId);
-    // TODO: Do we ever need to set state or requestArguments?
-    Map<String, Object> reqArgs = null;
     boolean authorizationExists = false;
     for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
       if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
-        reqArgs = serviceConfig.getRequestArguments();
         authorizationExists = true;
       }
     }
     if (!authorizationExists) {
       return new BeginResponse(null, null);
     }
-    return initializeAuthentication(client, reqArgs);
+    return initializeAuthentication(client);
   }
 
   protected Message getAccessTokenResponse(String state, Client client) 
@@ -286,8 +283,6 @@ public class RPHandler {
    * 
    * @param client
    *          Client instance, having service context for configuring the request.
-   * @param requestArguments
-   *          Non-default request arguments.
    * @return url for authentication/authorization endpoint and state parameter.
    * @throws MissingRequiredAttributeException
    *           if both client and state are null.
@@ -296,8 +291,7 @@ public class RPHandler {
    * @throws UnsupportedSerializationTypeException
    */
   @SuppressWarnings("unchecked")
-  protected BeginResponse initializeAuthentication(Client client,
-      Map<String, Object> requestArguments)
+  protected BeginResponse initializeAuthentication(Client client)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
 
@@ -311,10 +305,6 @@ public class RPHandler {
       if (behavior.getClaims().containsKey("scope")) {
         defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
       }
-    }
-    // Set non-default request arguments
-    if (requestArguments != null) {
-      defaultRequestArguments.putAll(requestArguments);
     }
     String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(),
         (String) defaultRequestArguments.get("state"));
