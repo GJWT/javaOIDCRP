@@ -17,13 +17,10 @@
 package org.oidc.rp;
 
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.commons.codec.binary.Base64;
 import org.oidc.common.MessageType;
 import org.oidc.common.MissingRequiredAttributeException;
 import org.oidc.common.ServiceName;
@@ -145,7 +142,6 @@ public class RPHandler {
       }
     }
     return new ResolveTokensResponse(idToken, accessToken);
-
   }
 
   public FinalizeResponse finalize(String issuer, String urlEncodedResponseBody)
@@ -164,8 +160,6 @@ public class RPHandler {
           (String) response.getClaims().get("error_uri"));
     }
     AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
-    // TODO: Following assumes state should always in response (and is generated to request). Verify
-    // this and remove this tag.
     String state = (String) authenticationResponse.getClaims().get("state");
     ResolveTokensResponse resp = resolveTokens(authenticationResponse, state, client);
     if (resp.indicatesError()) {
@@ -200,8 +194,6 @@ public class RPHandler {
       return response;
     }
     AuthenticationResponse authenticationResponse = (AuthenticationResponse) response;
-    // TODO: Following assumes state should always in response (and is generated to request). Verify
-    // this and remove this tag.
     String state = (String) authenticationResponse.getClaims().get("state");
     String issuerByState = getStateDb().getIssuer(state);
     if (issuerByState == null) {
@@ -269,7 +261,6 @@ public class RPHandler {
       behaviour.addClaim("redirect_uris", opConfiguration.getServiceContext().getRedirectUris());
       opConfiguration.getServiceContext().setBehavior(behaviour);
     }
-    // TODO: continue the sequence
     Client client = new Client();
     client.setServiceContext(opConfiguration.getServiceContext());
     // We store registered client
