@@ -116,6 +116,7 @@ public class RPHandler {
     // if response_type contains id_token we should have it in authentication response
     IDToken idToken = null;
     String accessToken = null;
+    String refreshToken = null;
     if (Pattern.compile("\\bid_token\\b").matcher(responseTypes).find()
         && authenticationResponse.getVerifiedIdToken() != null) {
       idToken = authenticationResponse.getVerifiedIdToken();
@@ -137,11 +138,12 @@ public class RPHandler {
       }
       AccessTokenResponse accessTokenResponse = (AccessTokenResponse) response;
       accessToken = (String) accessTokenResponse.getClaims().get("access_token");
+      refreshToken = (String) accessTokenResponse.getClaims().get("refresh_token");
       if (accessTokenResponse.getVerifiedIdToken() != null) {
         idToken = accessTokenResponse.getVerifiedIdToken();
       }
     }
-    return new ResolveTokensResponse(idToken, accessToken);
+    return new ResolveTokensResponse(idToken, accessToken, refreshToken);
   }
 
   public FinalizeResponse finalize(String issuer, String urlEncodedResponseBody)
@@ -180,7 +182,7 @@ public class RPHandler {
       }
       userClaims.getClaims().putAll(userInfoClaims.getClaims());
     }
-    return new FinalizeResponse(state, userClaims, resp.getAccessToken());
+    return new FinalizeResponse(state, userClaims, resp.getAccessToken(), resp.getRefreshToken());
   }
 
   protected ResponseMessage finalizeAuthentication(Client client, String issuer,
@@ -281,7 +283,6 @@ public class RPHandler {
    * @throws RequestArgumentProcessingException
    * @throws UnsupportedSerializationTypeException
    */
-  @SuppressWarnings("unchecked")
   protected BeginResponse initializeAuthentication(Client client)
       throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
       RequestArgumentProcessingException, SerializationException {
@@ -299,14 +300,8 @@ public class RPHandler {
     }
     String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(),
         (String) defaultRequestArguments.get("state"));
-    try {
-      return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
-          .getRequestParameters(defaultRequestArguments).getUrl(), state);
-    } catch (RequestArgumentProcessingException e) {
-      System.out.println(e.getError().getDetails());
-      e.printStackTrace();
-      return null;
-    }
+    return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
+        .getRequestParameters(defaultRequestArguments).getUrl(), state);
   }
 
   protected void callRemoteService(Service service, String state)
@@ -348,7 +343,6 @@ public class RPHandler {
         if (ServiceName.USER_INFO.equals(serviceName)) {
           return new UserInfo(serviceContext, stateDb, serviceConfig);
         }
-        // TODO support other services
       }
     }
     return null;
