@@ -25,6 +25,8 @@ class ResolveTokensResponse extends AbstractResponse {
   private final IDToken idToken;
   /** Access token. */
   private final String accessToken;
+  /** Refresh token. */
+  private final String refreshToken;
 
   /**
    * Constructor.
@@ -32,11 +34,14 @@ class ResolveTokensResponse extends AbstractResponse {
    * @param idToken
    *          Verified id token.
    * @param accessToken
-   *          access token.
+   *          Access token.
+   * @param refreshToken
+   *          Refresh token.
    */
-  ResolveTokensResponse(IDToken idToken, String accessToken) {
+  ResolveTokensResponse(IDToken idToken, String accessToken, String refreshToken) {
     this.idToken = idToken;
     this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
   }
 
   /**
@@ -55,6 +60,7 @@ class ResolveTokensResponse extends AbstractResponse {
     super(state, errorCode, errorDescription, errorUri);
     idToken = null;
     accessToken = null;
+    refreshToken = null;
   }
 
   /**
@@ -69,9 +75,18 @@ class ResolveTokensResponse extends AbstractResponse {
   /**
    * Get access token.
    * 
-   * @return access token
+   * @return Access token
    */
   public String getAccessToken() {
     return accessToken;
+  }
+  
+  /**
+   * Get refresh token.
+   * 
+   * @return Refresh token
+   */
+  public String getRefreshToken() {
+    return refreshToken;
   }
 }

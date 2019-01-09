@@ -25,6 +25,8 @@ public class FinalizeResponse extends AbstractResponse {
   private final OpenIDSchema userClaims;
   /** Access token. */
   private final String accessToken;
+  /** Refresh token. */
+  private final String refreshToken;
 
   /**
    * Constructor.
@@ -42,6 +44,7 @@ public class FinalizeResponse extends AbstractResponse {
     super(state, errorCode, errorDescription, errorUri);
     userClaims = null;
     accessToken = null;
+    refreshToken = null;
   }
 
   /**
@@ -53,11 +56,14 @@ public class FinalizeResponse extends AbstractResponse {
    *          user claims
    * @param accessToken
    *          access token
+   * @param refreshToken
+   *          Refresh token.
    */
-  FinalizeResponse(String state, OpenIDSchema userClaims, String accessToken) {
+  FinalizeResponse(String state, OpenIDSchema userClaims, String accessToken, String refreshToken) {
     super(state, null, null, null);
     this.userClaims = userClaims;
     this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
   }
 
   /**
@@ -70,6 +76,7 @@ public class FinalizeResponse extends AbstractResponse {
     super(response);
     userClaims = null;
     accessToken = null;
+    refreshToken = null;
   }
 
   /**
@@ -88,6 +95,15 @@ public class FinalizeResponse extends AbstractResponse {
    */
   public String getAccessToken() {
     return accessToken;
+  }
+
+  /**
+   * Get refresh token.
+   * 
+   * @return Refresh token
+   */
+  public String getRefreshToken() {
+    return refreshToken;
   }
 
 }
