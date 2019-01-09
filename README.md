@@ -28,7 +28,7 @@ Clearly the easiest way to configure the OPs for the RP handler is to do it via 
     "opId_2" : {
         "OP_CONFIGURATION HERE"
     },
-    ...
+
     "opId_n" : {
         "OP_CONFIGURATION HERE"
     }
