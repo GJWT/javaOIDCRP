@@ -166,26 +166,51 @@ public class OpConfiguration {
     }
   }
 
+  /**
+   * Get the service context shared between the services related to this OP.
+   * @return The service context shared between the services related to this OP.
+   */
   public ServiceContext getServiceContext() {
     return serviceContext;
   }
   
+  /**
+   * Set the service context shared between the services related to this OP.
+   * @param context What to set.
+   */
   public void setServiceContext(ServiceContext context) {
     serviceContext = context;
   }
 
+  /**
+   * Get the list of service configurations for this OP.
+   * @return The list of service configurations for this OP.
+   */
   public List<ServiceConfig> getServiceConfigs() {
     return serviceConfigs;
   }
 
+  /**
+   * Set the list of service configurations for this OP.
+   * @param configs What to set.
+   */
   public void setServiceConfigs(List<ServiceConfig> configs) {
     serviceConfigs = configs;
   }
   
+  /**
+   * Get the configuration claims used for initializing service context and service configurations.
+   * @return The configuration claims used for initializing service context and service
+   *    configurations.
+   */
   public Map<String, Object> getConfigurationClaims() {
     return configurationClaims;
   }
   
+  /**
+   * Set the configuration claims used for initializing service context and service configurations.
+   * @param claims What to set.
+   */
   public void setConfigurationClaims(Map<String, Object> claims) {
     configurationClaims = claims;
   }
