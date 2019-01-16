@@ -17,7 +17,9 @@
 package org.oidc.rp;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -56,44 +58,113 @@ import org.oidc.service.oidc.UserInfo;
 import org.oidc.service.oidc.Webfinger;
 import org.oidc.service.util.Constants;
 
+import com.google.common.base.Strings;
+
+/**
+ * The Relying Party (RP) handler can be used for handling user authentication and access
+ * authorization via OpenID Connect (OIDC) Providers (OP) or OAuth2 Authorization Servers (AS).
+ */
 public class RPHandler {
 
-  private OpConfiguration opConfiguration;
+  /** The configurations for the remote AS/OPs. */
+  private List<OpConfiguration> opConfigurations;
 
-  private Client client;
-
-  /** State db for storing messages. */
+  /** The state db for storing messages between the RP and the remote AS/OP. */
   private State stateDb;
 
   /** Maps issuer to correct client. */
   private Map<String, Client> issuer2Client = new HashMap<String, Client>();
-
+  
+  /**
+   * Constructor. Uses default state db.
+   * 
+   * @param configurations The configurations for the remote AS/OPs.
+   */
+  public RPHandler(List<OpConfiguration> configurations) {
+    this(configurations, new InMemoryStateImpl());
+  }
+  
+  /**
+   * Constructor. Uses default state db.
+   * 
+   * @param configuration The configuration for the remote AS/OP.
+   */
   public RPHandler(OpConfiguration configuration) {
-    this(configuration, new InMemoryStateImpl());
+    this(Arrays.asList(configuration));
   }
 
-  public RPHandler(OpConfiguration configuration, State stateDb) {
-    this.opConfiguration = configuration;
+  /**
+   * Constructor.
+   * 
+   * @param configurations The configurations for the remote AS/OPs.
+   * @param stateDb The state db for storing messages between the RP and the remote AS/OP.
+   */
+  public RPHandler(List<OpConfiguration> configurations, State stateDb) {
+    this.opConfigurations = configurations;
     this.stateDb = stateDb;
   }
-
-  public BeginResponse begin(String issuer, String userId)
-      throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
-      RequestArgumentProcessingException, SerializationException, ValueException, 
-      InvalidClaimException {
-    client = setupClient(issuer, userId);
-    boolean authorizationExists = false;
-    for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
-      if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
-        authorizationExists = true;
-      }
-    }
-    if (!authorizationExists) {
-      return new BeginResponse(null, null);
-    }
-    return initializeAuthentication(client);
+  
+  /**
+   * Constructor.
+   * 
+   * @param configuration The configuration for the remote AS/OP.
+   * @param stateDb The state db for storing messages between the RP and the remote AS/OP.
+   */
+  public RPHandler(OpConfiguration configuration, State stateDb) {
+    this(Arrays.asList(configuration), stateDb);
   }
 
+  /**
+   * Begins the authentication sequence. If configured and needed, Webfinger, 
+   * ProviderInfoDiscovery and Registration services are called before constructing the request
+   * message for the Authorization service. Either issuer or userId must be given in the
+   * parameters.
+   * 
+   * @param issuer The issuer of the AS/OP to be called.
+   * @param userId The userId to be used for the Webfinger service.
+   * @return The details for the request to be sent to the Authorization service.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
+  public BeginResponse begin(String issuer, String userId)
+      throws MissingRequiredAttributeException, RequestArgumentProcessingException, ValueException,
+      InvalidClaimException {
+    Client client = setupClient(issuer, userId);
+    if (authorizationServiceExists(client)) {
+      return initializeAuthentication(client);
+    } else {
+      return new BeginResponse(null, null);
+    }
+  }
+  
+  /**
+   * Checks if the Authorization service is configured for the OP for the given client.
+   * 
+   * @param client The client whose OP configuration is checked.
+   * @return true if Authorization service is configured, false otherwise.
+   */
+  protected boolean authorizationServiceExists(Client client) {
+    for (ServiceConfig serviceConfig : client.getOpConfiguration().getServiceConfigs()) {
+      if (ServiceName.AUTHORIZATION.equals(serviceConfig.getServiceName())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Calls the access token service with the given state.
+   * 
+   * @param state The state to be used when calling the service.
+   * @param client The client where to get the OP configuration.
+   * @return The response message obtained from the access token service.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected Message getAccessTokenResponse(String state, Client client) 
       throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
       RequestArgumentProcessingException {
@@ -101,11 +172,27 @@ public class RPHandler {
     // possibly contained by it.
     Map<String, Object> requestArguments = new HashMap<String, Object>();
     requestArguments.put("state", state);
-    Service accessToken = getService(ServiceName.ACCESS_TOKEN, client.getServiceContext());
+    Service accessToken = getService(client.getOpConfiguration(), ServiceName.ACCESS_TOKEN);
+    if (accessToken == null) {
+      throw new ValueException("Access token service is not configured for the given client");
+    }
     callRemoteService(accessToken, requestArguments, state);
     return accessToken.getResponseMessage();
   }
 
+  /**
+   * Resolves the tokens from the given authentication response, or possibly further call the
+   * access token service.
+   * 
+   * @param authenticationResponse The message from which to exploit id_token and access tokens.
+   * @param state The state to be used in the access token service call.
+   * @param client The client where to get the OP configuration.
+   * @return The resolved token details.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected ResolveTokensResponse resolveTokens(AuthenticationResponse authenticationResponse,
       String state, Client client)
           throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
@@ -146,13 +233,28 @@ public class RPHandler {
     return new ResolveTokensResponse(idToken, accessToken, refreshToken);
   }
 
+  /**
+   * Finalizes the authentication for the given issuer with the given authentication response
+   * message.
+   * 
+   * @param issuer The issuer from which the response is coming from.
+   * @param urlEncodedResponseBody The serialized response message from the OP.
+   * @return The authentication details.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute or
+   *        the client corresponding to the given issuer cannot be found.
+   * @throws DeserializationException If the given response message cannot be deserialized.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   public FinalizeResponse finalize(String issuer, String urlEncodedResponseBody)
       throws MissingRequiredAttributeException, DeserializationException, ValueException,
       InvalidClaimException, RequestArgumentProcessingException {
 
     Client client = issuer2Client.get(issuer);
     if (client == null) {
-      throw new MissingRequiredAttributeException("Could not resolve client for the issuer");
+      throw new MissingRequiredAttributeException("Could not resolve client for the issuer " 
+          + issuer);
     }
     ResponseMessage response = finalizeAuthentication(client, issuer, urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
@@ -169,7 +271,7 @@ public class RPHandler {
     }
     OpenIDSchema userClaims = new OpenIDSchema(resp.getIDToken().getClaims());
     // If there is userinfo endpoint, we look for more claims
-    UserInfo service = (UserInfo) getService(ServiceName.USER_INFO, client.getServiceContext());
+    UserInfo service = (UserInfo) getService(client.getOpConfiguration(), ServiceName.USER_INFO);
     if (service != null && resp.getAccessToken() != null) {
       Map<String, Object> requestArguments = new HashMap<String, Object>();
       requestArguments.put("access_token", resp.getAccessToken());
@@ -185,11 +287,26 @@ public class RPHandler {
     return new FinalizeResponse(state, userClaims, resp.getAccessToken(), resp.getRefreshToken());
   }
 
+  /**
+   * Finalizes the authentication for the given issuer with the given authentication response
+   * message, using the given client.
+   * 
+   * @param issuer The issuer from which the response is coming from.
+   * @param urlEncodedResponseBody The serialized response message from the OP.
+   * @param client The client where to get the OP configuration.
+   * @return The authentication details.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute or
+   *        the client corresponding to the given issuer cannot be found.
+   * @throws DeserializationException If the given response message cannot be deserialized.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected ResponseMessage finalizeAuthentication(Client client, String issuer,
       String urlEncodedResponseBody) throws DeserializationException, ValueException,
       InvalidClaimException, MissingRequiredAttributeException {
 
-    Service service = getService(ServiceName.AUTHORIZATION, client.getServiceContext());
+    Service service = getService(client.getOpConfiguration(), ServiceName.AUTHORIZATION);
     ResponseMessage response = (AuthenticationResponse) service
         .parseResponse(urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
@@ -209,40 +326,80 @@ public class RPHandler {
     return authenticationResponse;
   }
 
+  /**
+   * Calls the Webfinger services of all the configured OPs in order to find an issuer that could
+   * authenticate the given user identifier.
+   * 
+   * @param userId The user identifier whose authenticator is searched via Webfinger.
+   * @return The issuer name of the OP who can authenticate the user.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication with any service fails or if the issuer could not
+   *        be resolved.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
+  protected String callWebfingerServices(String userId) throws MissingRequiredAttributeException, 
+      ValueException, InvalidClaimException, RequestArgumentProcessingException {
+    for (OpConfiguration opConfiguration : opConfigurations) {
+      Service webfinger = getService(opConfiguration, ServiceName.WEBFINGER);
+      if (webfinger != null) {
+        Map<String, Object> requestParams = new HashMap<>();
+        requestParams.put(Constants.WEBFINGER_RESOURCE, userId);
+        callRemoteService(webfinger, requestParams, null);
+        if (opConfiguration.getServiceContext().getIssuer() != null) {
+          return opConfiguration.getServiceContext().getIssuer();
+        }
+      }
+    }
+    throw new ValueException("Could not resolve the issuer for userId=" + userId);
+  }
+
+  /**
+   * Sets up the client for the communication with OP. If configured and needed, Webfinger, 
+   * ProviderInfoDiscovery and Registration services are called before. Either issuer or userId
+   * must be given in the parameters.
+   * 
+   * @param issuer The issuer of the AS/OP to be called.
+   * @param userId The userId to be used for the Webfinger service.
+   * @return The details for the request to be sent to the Authorization service.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication with any service fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected Client setupClient(String issuer, String userId)
       throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
       RequestArgumentProcessingException {
 
     // See if the client has been stored already by issuer
-    if (issuer != null || opConfiguration.getServiceContext().getIssuer() != null) {
-      issuer = issuer == null ? opConfiguration.getServiceContext().getIssuer() : issuer;
+    if (issuer != null) {
       Client client = issuer2Client.get(issuer);
       if (client != null) {
         return client;
       }
     }
-    // No prestored client, we try to perform webfinger and register the client.
     if (issuer == null && userId == null) {
       throw new MissingRequiredAttributeException("Either issuer or userId must be provided");
     }
+    // No prestored client, we try to perform webfinger and register the client.
+    OpConfiguration opConfiguration;
     if (issuer == null) {
       // Webfinger only if issuer is not given
-      Service webfinger = getService(ServiceName.WEBFINGER, opConfiguration.getServiceContext());
-      if (webfinger != null) {
-        Map<String, Object> requestParams = new HashMap<>();
-        requestParams.put(Constants.WEBFINGER_RESOURCE, userId);
-        callRemoteService(webfinger, requestParams, null);
-        if (opConfiguration.getServiceContext().getIssuer() == null) {
-          throw new MissingRequiredAttributeException(
-              "Could not resolve the issuer for userId=" + userId);
-        }
-      } else {
-        throw new MissingRequiredAttributeException(
-            "Webfinger service must be configured if no issuer is provided");
+      String resolvedIssuer = callWebfingerServices(userId);
+      opConfiguration = getOpConfigurationViaIssuer(resolvedIssuer);
+      if (opConfiguration == null) {
+        throw new ValueException(
+            "Could not find OP configuration for Webfinger resolved issuer " + resolvedIssuer);
+      }
+    } else {
+      opConfiguration = getOpConfigurationViaIssuer(issuer);
+      if (opConfiguration == null) {
+        throw new ValueException(
+            "Could not find OP configuration for the given issuer " + issuer);
       }
     }
-    Service providerInfoDiscovery = getService(ServiceName.PROVIDER_INFO_DISCOVERY,
-        opConfiguration.getServiceContext());
+    Service providerInfoDiscovery = getService(opConfiguration, 
+        ServiceName.PROVIDER_INFO_DISCOVERY);
     if (providerInfoDiscovery != null) {
       callRemoteService(providerInfoDiscovery, null);
     } else {
@@ -250,8 +407,7 @@ public class RPHandler {
           "ProviderInfoDiscovery service must be configured to fetch configuration for "
           + opConfiguration.getServiceContext().getIssuer());
     }
-    Service registration = getService(ServiceName.REGISTRATION,
-        opConfiguration.getServiceContext());
+    Service registration = getService(opConfiguration, ServiceName.REGISTRATION);
     if (registration != null) {
       callRemoteService(registration, null);
     } else {
@@ -263,8 +419,7 @@ public class RPHandler {
       behaviour.addClaim("redirect_uris", opConfiguration.getServiceContext().getRedirectUris());
       opConfiguration.getServiceContext().setBehavior(behaviour);
     }
-    Client client = new Client();
-    client.setServiceContext(opConfiguration.getServiceContext());
+    Client client = new Client(opConfiguration);
     // We store registered client
     issuer2Client.put(opConfiguration.getServiceContext().getIssuer(), client);
     return client;
@@ -274,21 +429,18 @@ public class RPHandler {
    * Constructs the URL that will redirect the user to the authentication endpoint of the OP /
    * authorization endpoint of the AS.
    * 
-   * @param client
-   *          Client instance, having service context for configuring the request.
+   * @param client Client instance, having service context for configuring the request.
    * @return url for authentication/authorization endpoint and state parameter.
-   * @throws MissingRequiredAttributeException
-   *           if both client and state are null.
-   * @throws SerializationException
-   * @throws RequestArgumentProcessingException
-   * @throws UnsupportedSerializationTypeException
+   * @throws MissingRequiredAttributeException if any required attribute is missing.
+   * @throws RequestArgumentProcessingException If the request arguments are unexpected.
+   * @throws ValueException If the request message cannot be serialized.
    */
   protected BeginResponse initializeAuthentication(Client client)
-      throws MissingRequiredAttributeException, UnsupportedSerializationTypeException,
-      RequestArgumentProcessingException, SerializationException {
+      throws MissingRequiredAttributeException, RequestArgumentProcessingException,
+        ValueException  {
 
     if (client == null) {
-      throw new MissingRequiredAttributeException("Client or state must be provided");
+      throw new MissingRequiredAttributeException("Client must be provided");
     }
     Map<String, Object> defaultRequestArguments = new HashMap<String, Object>();
     RegistrationResponse behavior = client.getServiceContext().getBehavior();
@@ -300,16 +452,44 @@ public class RPHandler {
     }
     String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(),
         (String) defaultRequestArguments.get("state"));
-    return new BeginResponse(getService(ServiceName.AUTHORIZATION, client.getServiceContext())
-        .getRequestParameters(defaultRequestArguments).getUrl(), state);
+    Service authorization = getService(client.getOpConfiguration(), ServiceName.AUTHORIZATION);
+    try {
+      return new BeginResponse(authorization.getRequestParameters(defaultRequestArguments)
+          .getUrl(), state);
+    } catch (UnsupportedSerializationTypeException | SerializationException e) {
+      throw new ValueException("Could not serialize the request message", e);
+    }
   }
 
+  /**
+   * Calls the given remote service with given state. Also the service context will be updated via
+   * {@link Service#updateServiceContext(Message, String) -method.
+   * 
+   * @param service The service to be called.
+   * @param state The state to be used with {@link Service#updateServiceContext(Message, String).
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected void callRemoteService(Service service, String state)
       throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
       RequestArgumentProcessingException {
     callRemoteService(service, new HashMap<String, Object>(), state);
   }
   
+  /**
+   * Calls the given remote service with given arguments and state. Also the service context will
+   * be updated via {@link Service#updateServiceContext(Message, String) -method.
+   * 
+   * @param service The service to be called.
+   * @param requestArguments The map of request arguments.
+   * @param state The state to be used with {@link Service#updateServiceContext(Message, String).
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
   protected void callRemoteService(Service service, Map<String, Object> requestArguments, 
       String state) 
           throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
@@ -322,7 +502,15 @@ public class RPHandler {
     }
   }
 
-  protected Service getService(ServiceName serviceName, ServiceContext serviceContext) {
+  /**
+   * Get the desired service from the given OP configuration.
+   * 
+   * @param opConfiguration The OP configuration where to fetch the service.
+   * @param serviceName The name of the service to be fetched.
+   * @return The service, or null if it was not configured for the given OP.
+   */
+  protected Service getService(OpConfiguration opConfiguration, ServiceName serviceName) {
+    ServiceContext serviceContext = opConfiguration.getServiceContext();
     for (ServiceConfig serviceConfig : opConfiguration.getServiceConfigs()) {
       if (serviceName.equals(serviceConfig.getServiceName())) {
         if (ServiceName.WEBFINGER.equals(serviceName)) {
@@ -347,17 +535,41 @@ public class RPHandler {
     }
     return null;
   }
-
-  public Client getClient() {
-    return client;
+  
+  /**
+   * Get the OP configuration corresponding to the given issuer.
+   * 
+   * @param issuer The issuer corresponding to the desired OP configuration.
+   * @return The OP configuration, or null if it was not found.
+   */
+  private OpConfiguration getOpConfigurationViaIssuer(String issuer) {
+    if (Strings.isNullOrEmpty(issuer)) {
+      return null;
+    }
+    for (OpConfiguration opConfiguration : opConfigurations) {
+      if (issuer.equals(opConfiguration.getIssuer())) {
+        return opConfiguration;
+      }
+    }
+    return null;
   }
 
+  /**
+   * Get the state db for storing messages between the RP and the remote AS/OP.
+   * 
+   * @return The state db for storing messages between the RP and the remote AS/OP.
+   */
   public State getStateDb() {
     return stateDb;
   }
 
-  public OpConfiguration getOpConfiguration() {
-    return opConfiguration;
+  /**
+   * Get the configurations for the remote AS/OPs.
+   * 
+   * @return The configurations for the remote AS/OPs.
+   */
+  public List<OpConfiguration> getOpConfigurations() {
+    return opConfigurations;
   }
 
 }
