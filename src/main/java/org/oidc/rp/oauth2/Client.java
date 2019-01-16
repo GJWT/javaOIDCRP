@@ -16,18 +16,50 @@
 
 package org.oidc.rp.oauth2;
 
+import org.oidc.rp.config.OpConfiguration;
 import org.oidc.service.base.ServiceContext;
 
+/**
+ * The client holding state and configuration for the communication with the remote AS/OP.
+ */
 public class Client {
   
-  private ServiceContext serviceContext;
-  
-  public ServiceContext getServiceContext() {
-    return serviceContext;
+  /** The configuration for the remote AS/OP. */
+  private OpConfiguration opConfiguration;
+
+  /**
+   * Constructor.
+   * 
+   * @param configuration The configuration for the remote AS/OP.
+   */
+  public Client(OpConfiguration configuration) {
+    opConfiguration = configuration;
   }
   
-  public void setServiceContext(ServiceContext serviceCtx) {
-    this.serviceContext = serviceCtx;
+  /**
+   * Get the service context information from the OP configuration.
+   * 
+   * @return The service context information from the OP configuration.
+   */
+  public ServiceContext getServiceContext() {
+    return opConfiguration.getServiceContext();
+  }
+  
+  /**
+   * Get the configuration for the remote AS/OP.
+   * 
+   * @return The configuration for the remote AS/OP.
+   */
+  public OpConfiguration getOpConfiguration() {
+    return opConfiguration;
+  }
+  
+  /**
+   * Set the configuration for the remote AS/OP.
+   * @param configuration What to set.
+   */
+  public void setOpConfiguration(OpConfiguration configuration) {
+    opConfiguration = configuration;
   }
 
 }
