@@ -17,14 +17,17 @@
 package org.oidc.rp;
 
 /** Class implementing RP Handler error response. */
-abstract class AbstractResponse {
+public abstract class AbstractResponse {
 
   /** State parameter. */
   protected final String state;
+  
   /** Error code. */
   private final String errorCode;
+  
   /** Error description. */
   private final String errorDescription;
+  
   /** Error uri. */
   private final String errorUri;
 
@@ -32,23 +35,16 @@ abstract class AbstractResponse {
    * Constructor.
    */
   AbstractResponse() {
-    state = null;
-    errorCode = null;
-    errorDescription = null;
-    errorUri = null;
+    this(null, null, null, null);
   }
 
   /**
    * Constructor.
    * 
-   * @param state
-   *          state parameter
-   * @param errorCode
-   *          error code
-   * @param errorDescription
-   *          error description
-   * @param errorUri
-   *          error uri
+   * @param state The state parameter.
+   * @param errorCode The error code.
+   * @param errorDescription The error description.
+   * @param errorUri The error uri.
    */
   AbstractResponse(String state, String errorCode, String errorDescription, String errorUri) {
     this.state = state;
@@ -60,14 +56,11 @@ abstract class AbstractResponse {
   /**
    * Constructor.
    * 
-   * @param response
-   *          response to copy the fields from. Must not be null.
+   * @param response The response to copy the fields from. Must not be null.
    */
   AbstractResponse(AbstractResponse response) {
-    this.state = response.state;
-    this.errorCode = response.errorCode;
-    this.errorDescription = response.errorDescription;
-    this.errorUri = response.errorUri;
+    this(response.getState(), response.getErrorCode(), response.getErrorDescription(), 
+        response.getErrorUri());
   }
 
   /**

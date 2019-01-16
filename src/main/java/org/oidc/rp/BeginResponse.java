@@ -18,18 +18,18 @@ package org.oidc.rp;
 
 /** Class wrapping RP Handler begin response. */
 public class BeginResponse {
+  
   /** Redirect URI for authentication request. */
   final String redirectUri;
+  
   /** State value the session is tied to. */
   final String state;
 
   /**
    * Constructor.
    * 
-   * @param redirectUri
-   *          redirect URI for authentication request
-   * @param state
-   *          state value the session is tied to
+   * @param redirectUri The redirect URI for authentication request.
+   * @param state The state value the session is tied to.
    */
   BeginResponse(String redirectUri, String state) {
     this.redirectUri = redirectUri;

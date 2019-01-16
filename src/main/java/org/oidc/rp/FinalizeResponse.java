@@ -23,22 +23,20 @@ public class FinalizeResponse extends AbstractResponse {
 
   /** User claims. */
   private final OpenIDSchema userClaims;
+  
   /** Access token. */
   private final String accessToken;
+  
   /** Refresh token. */
   private final String refreshToken;
 
   /**
    * Constructor.
    * 
-   * @param state
-   *          state parameter
-   * @param errorCode
-   *          error code
-   * @param errorDescription
-   *          error description
-   * @param errorUri
-   *          error uri
+   * @param state The state parameter.
+   * @param errorCode The error code-
+   * @param errorDescription The error description.
+   * @param errorUri The error uri.
    */
   FinalizeResponse(String state, String errorCode, String errorDescription, String errorUri) {
     super(state, errorCode, errorDescription, errorUri);
@@ -50,14 +48,10 @@ public class FinalizeResponse extends AbstractResponse {
   /**
    * Constructor.
    * 
-   * @param state
-   *          state parameter
-   * @param userClaims
-   *          user claims
-   * @param accessToken
-   *          access token
-   * @param refreshToken
-   *          Refresh token.
+   * @param state The state parameter.
+   * @param userClaims The user claims.
+   * @param accessToken The access token.
+   * @param refreshToken The refresh token.
    */
   FinalizeResponse(String state, OpenIDSchema userClaims, String accessToken, String refreshToken) {
     super(state, null, null, null);
@@ -69,8 +63,7 @@ public class FinalizeResponse extends AbstractResponse {
   /**
    * Constructor.
    * 
-   * @param response
-   *          response to copy the fields from. Must not be null.
+   * @param response The response to copy the fields from. Must not be null.
    */
   FinalizeResponse(AbstractResponse response) {
     super(response);

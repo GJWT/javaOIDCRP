@@ -23,22 +23,22 @@ class ResolveTokensResponse extends AbstractResponse {
 
   /** Verified id token. */
   private final IDToken idToken;
+  
   /** Access token. */
   private final String accessToken;
+  
   /** Refresh token. */
   private final String refreshToken;
 
   /**
    * Constructor.
    * 
-   * @param idToken
-   *          Verified id token.
-   * @param accessToken
-   *          Access token.
-   * @param refreshToken
-   *          Refresh token.
+   * @param idToken The verified id token.
+   * @param accessToken The access token.
+   * @param refreshToken The refresh token.
    */
   ResolveTokensResponse(IDToken idToken, String accessToken, String refreshToken) {
+    super();
     this.idToken = idToken;
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
@@ -47,14 +47,10 @@ class ResolveTokensResponse extends AbstractResponse {
   /**
    * Constructor.
    * 
-   * @param state
-   *          state parameter
-   * @param errorCode
-   *          error code
-   * @param errorDescription
-   *          error description
-   * @param errorUri
-   *          error uri
+   * @param state The state parameter.
+   * @param errorCode The error code.
+   * @param errorDescription The error description.
+   * @param errorUri The error uri.
    */
   ResolveTokensResponse(String state, String errorCode, String errorDescription, String errorUri) {
     super(state, errorCode, errorDescription, errorUri);
