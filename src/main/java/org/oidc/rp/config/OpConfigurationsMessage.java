@@ -101,18 +101,6 @@ public class OpConfigurationsMessage extends AbstractMessage {
     }
   }
 
-  protected class ServicesConfiguration extends AbstractMessage {
-
-    public ServicesConfiguration(Map<String, Object> claims) {
-      super(claims);
-      for (String key : claims.keySet()) {
-        paramVerDefs.put(key,
-            new ParameterVerificationDefinition(new ServicesConfigurationValidator(), true));
-      }
-    }
-
-  }
-
   protected class ServicesConfigurationValidator implements ClaimValidator<List<ServiceConfig>> {
 
     @SuppressWarnings("unchecked")
@@ -120,7 +108,10 @@ public class OpConfigurationsMessage extends AbstractMessage {
     public List<ServiceConfig> validate(Object value) throws InvalidClaimException {
       if (value instanceof List) {
         List<?> list = (List<?>) value;
-        if (!list.isEmpty() && !(list.get(0) instanceof ServiceConfig)) {
+        if (list.isEmpty()) {
+          return new ArrayList<ServiceConfig>();
+        }
+        if (!(list.get(0) instanceof ServiceConfig)) {
           throw new InvalidClaimException("Invalid contents in the services configuration");
         }
         return (List<ServiceConfig>) value;
@@ -146,6 +137,8 @@ public class OpConfigurationsMessage extends AbstractMessage {
               throw new InvalidClaimException("Invalid contents in the services configuration: "
                   + serviceConfigMsg.getError().getDetails());
             }
+          } else {
+            throw new InvalidClaimException("Invalid contents in the services configuration");
           }
         }
         return serviceConfigs;
