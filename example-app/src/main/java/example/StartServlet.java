@@ -23,12 +23,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.common.MissingRequiredAttributeException;
-import org.oidc.common.UnsupportedSerializationTypeException;
 import org.oidc.common.ValueException;
 import org.oidc.msg.InvalidClaimException;
-import org.oidc.msg.SerializationException;
 import org.oidc.rp.BeginResponse;
-import org.oidc.rp.RPHandler;
 import org.oidc.service.base.RequestArgumentProcessingException;
 
 public class StartServlet extends AbstractRpHandlerServlet {
@@ -43,7 +40,6 @@ public class StartServlet extends AbstractRpHandlerServlet {
       writeHtmlBodyOutput(response, getIssuerList(request));
       return;
     }
-    RPHandler rpHandler = getRpHandlerViaIssuer(issuer);
     if (rpHandler == null) {
       writeHtmlBodyOutput(response, 
           "Could not find a configuration with the given issuer: " + issuer);
@@ -54,21 +50,11 @@ public class StartServlet extends AbstractRpHandlerServlet {
       if (beginResponse.getRedirectUri() != null) {
         response.sendRedirect(beginResponse.getRedirectUri());
       }
-    } catch (MissingRequiredAttributeException | UnsupportedSerializationTypeException
-        | RequestArgumentProcessingException | SerializationException | ValueException | 
-        InvalidClaimException e) {
+    } catch (MissingRequiredAttributeException | RequestArgumentProcessingException | 
+        ValueException | InvalidClaimException e) {
       e.printStackTrace();
       writeHtmlBodyOutput(response, "Error: " + e.getMessage());
     }
   }
-  
-  protected RPHandler getRpHandlerViaIssuer(String issuer) {
-    for (String config : rpHandlers.keySet()) {
-      RPHandler rpHandler = rpHandlers.get(config);
-      if (issuer.equals(rpHandler.getOpConfiguration().getServiceContext().getIssuer())) {
-        return rpHandler;
-      }
-    }
-    return null;
-  }
+
 }

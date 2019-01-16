@@ -14,7 +14,8 @@
 
 package example;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.servlet.ServletContainerInitializer;
@@ -27,7 +28,7 @@ import org.oidc.rp.RPHandler;
 
 public class ServletConfiguration implements ServletContainerInitializer {
 
-  public static final String ATTR_NAME_RP_HANDLERS = "oidcRpHandlers";
+  public static final String ATTR_NAME_RP_HANDLER = "oidcRpHandler";
 
   public static final String HOME_SERVLET_MAPPING = "/Home";
 
@@ -43,11 +44,10 @@ public class ServletConfiguration implements ServletContainerInitializer {
     Map<String, OpConfiguration> opConfigs;
     try {
       opConfigs = OpConfiguration.parseFromJson("src/test/resources/testop_config.json", baseUrl);
-      Map<String, RPHandler> rpHandlers = new HashMap<>();
+      List<OpConfiguration> configurations = new ArrayList<>();
       for (String config : opConfigs.keySet()) {
         OpConfiguration opConfig = opConfigs.get(config);
-        RPHandler rpHandler = new RPHandler(opConfig);
-        rpHandlers.put(config, rpHandler);
+        configurations.add(opConfig);
         for (String uri : opConfig.getServiceContext().getRedirectUris()) {
           System.out.println("URI: " + uri);
           ServletRegistration.Dynamic callbackRegistration =
@@ -55,7 +55,7 @@ public class ServletConfiguration implements ServletContainerInitializer {
           callbackRegistration.addMapping(uri.replace(baseUrl, ""));
         }
       }
-      servletContext.setAttribute(ATTR_NAME_RP_HANDLERS, rpHandlers);
+      servletContext.setAttribute(ATTR_NAME_RP_HANDLER, new RPHandler(configurations));
     } catch (DeserializationException e) {
       e.printStackTrace();
     }

@@ -42,7 +42,6 @@ public class CallbackServlet extends AbstractRpHandlerServlet {
   @Override
   public void service(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
-    RPHandler rpHandler = rpHandlers.get(issuer);
     String state = request.getParameter("state");
     StateRecord stateRecord = rpHandler.getStateDb().getState(state);
     

@@ -26,18 +26,19 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.oidc.rp.RPHandler;
+import org.oidc.rp.config.OpConfiguration;
 
 @SuppressWarnings("serial")
 public abstract class AbstractRpHandlerServlet extends HttpServlet {
 
-  protected Map<String, RPHandler> rpHandlers;
+  protected RPHandler rpHandler;
 
   @SuppressWarnings("unchecked")
   @Override
   public void init() throws ServletException {
-    rpHandlers = (Map<String, RPHandler>) getServletConfig().getServletContext()
-        .getAttribute(ServletConfiguration.ATTR_NAME_RP_HANDLERS);
-    if (rpHandlers == null) {
+    rpHandler = (RPHandler) getServletConfig().getServletContext()
+        .getAttribute(ServletConfiguration.ATTR_NAME_RP_HANDLER);
+    if (rpHandler == null) {
       throw new ServletException("Could not find RPHandler instance from the servlet context!");
     }
   }
@@ -55,9 +56,8 @@ public abstract class AbstractRpHandlerServlet extends HttpServlet {
     StringBuilder html = new StringBuilder();
     html.append("<h1>New authentication</h1>");
     html.append("<p>Configured issuers:</p>");
-    for (String config : rpHandlers.keySet()) {
-      html.append("<p> - " + config + ": " 
-          + rpHandlers.get(config).getOpConfiguration().getServiceContext().getIssuer() + "</p>");
+    for (OpConfiguration config : rpHandler.getOpConfigurations()) {
+      html.append("<p> - " + config.getServiceContext().getIssuer() + "</p>");
     }
     String action = request.getContextPath() + ServletConfiguration.HOME_SERVLET_MAPPING;
     html.append("<form method=\"GET\" action=\"" + action + "\">"
