@@ -35,8 +35,16 @@ import org.oidc.service.base.ServiceConfigMessage;
 
 import com.google.common.collect.ImmutableMap;
 
+/**
+ * Structure definitions for the map of {@link OpConfiguration} as {@link Message}.
+ */
 public class OpConfigurationsMessage extends AbstractMessage {
 
+  /**
+   * Constructor.
+   * 
+   * @param claims The message claims.
+   */
   public OpConfigurationsMessage(Map<String, Object> claims) {
     super(claims);
     for (String key : claims.keySet()) {
@@ -45,6 +53,12 @@ public class OpConfigurationsMessage extends AbstractMessage {
     }
   }
   
+  /**
+   * Get the service name from the given string.
+   * 
+   * @param key The service name as String.
+   * @return The service name as {@link ServiceName}.
+   */
   protected static ServiceName getServiceName(String key) {
     return ImmutableMap.<String, ServiceName>builder()
         .put("ProviderInfoDiscovery", ServiceName.PROVIDER_INFO_DISCOVERY)
@@ -56,6 +70,9 @@ public class OpConfigurationsMessage extends AbstractMessage {
         .put("UserInfo", ServiceName.USER_INFO).build().get(key);
   }
 
+  /**
+   * Message structure for a single {@link OpConfiguration}.
+   */
   protected class SingleOpConfiguration extends AbstractMessage {
 
     {
@@ -75,17 +92,25 @@ public class OpConfigurationsMessage extends AbstractMessage {
       paramVerDefs.put("PUBLIC_JWKS_PATH", ParameterVerification.SINGLE_OPTIONAL_STRING.getValue());
     }
 
-
+    /**
+     * Constructor.
+     * 
+     * @param claims The message claims.
+     */
     public SingleOpConfiguration(Map<String, Object> claims) {
       super(claims);
     }
 
   }
 
+  /**
+   * A validator for {@link SingleOpConfiguration} as ServiceName-keyed Map.
+   */
   protected class OpConfigurationValidator implements ClaimValidator<Map<String, Object>> {
 
     @SuppressWarnings("unchecked")
     @Override
+    /** {@inheritDoc} */
     public Map<String, Object> validate(Object value) throws InvalidClaimException {
       if (!(value instanceof Map)) {
         throw new InvalidClaimException(
@@ -101,10 +126,14 @@ public class OpConfigurationsMessage extends AbstractMessage {
     }
   }
 
+  /**
+   * A validator for {@link ServiceConfig}s, obtained from a List or Map.
+   */
   protected class ServicesConfigurationValidator implements ClaimValidator<List<ServiceConfig>> {
 
     @SuppressWarnings("unchecked")
     @Override
+    /** {@inheritDoc} */
     public List<ServiceConfig> validate(Object value) throws InvalidClaimException {
       if (value instanceof List) {
         List<?> list = (List<?>) value;
@@ -146,11 +175,15 @@ public class OpConfigurationsMessage extends AbstractMessage {
       throw new InvalidClaimException("Invalid contents in the services configuration");
     }
   }
-  
+
+  /**
+   * A validator for client preferences ({@link RegistrationRequest} as String-keyed Map.
+   */
   protected class ClientPreferencesValidator implements ClaimValidator<RegistrationRequest> {
 
     @SuppressWarnings("unchecked")
     @Override
+    /** {@inheritDoc} */
     public RegistrationRequest validate(Object value) throws InvalidClaimException {
       if (!(value instanceof Map)) {
         throw new InvalidClaimException(
@@ -166,11 +199,15 @@ public class OpConfigurationsMessage extends AbstractMessage {
           "Invalid contents in the client preferences: " + clientPreferences.getError().getDetails());
     }
   }
-  
+
+  /**
+   * A validator for allow-field (a String-keyed map of Booleans).
+   */
   protected class AllowValidator implements ClaimValidator<Map<String, Boolean>> {
 
     @SuppressWarnings("unchecked")
     @Override
+    /** {@inheritDoc} */
     public Map<String, Boolean> validate(Object value) throws InvalidClaimException {
       if (!(value instanceof Map)) {
         throw new InvalidClaimException(
