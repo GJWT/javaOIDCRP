@@ -64,7 +64,7 @@ public class OpConfigurationTest {
   public void testWithFile() throws DeserializationException {
     Map<String, OpConfiguration> opConfigs = OpConfiguration.parseFromJson(file, baseUrl);
     Assert.assertNotNull(opConfigs);
-    Assert.assertEquals(1, opConfigs.size());
+    Assert.assertEquals(2, opConfigs.size());
     OpConfiguration opConfig = opConfigs.get("mockIssuer");
     Assert.assertNotNull(opConfig);
     ServiceConfig registrationConfig = null;
