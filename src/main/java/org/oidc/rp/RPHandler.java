@@ -251,7 +251,7 @@ public class RPHandler {
       throws MissingRequiredAttributeException, DeserializationException, ValueException,
       InvalidClaimException, RequestArgumentProcessingException {
 
-    Client client = issuer2Client.get(issuer);
+    Client client = getClient(issuer);
     if (client == null) {
       throw new MissingRequiredAttributeException("Could not resolve client for the issuer " 
           + issuer);
@@ -373,7 +373,7 @@ public class RPHandler {
 
     // See if the client has been stored already by issuer
     if (issuer != null) {
-      Client client = issuer2Client.get(issuer);
+      Client client = getClient(issuer);
       if (client != null) {
         return client;
       }
@@ -421,7 +421,7 @@ public class RPHandler {
     }
     Client client = new Client(opConfiguration);
     // We store registered client
-    issuer2Client.put(opConfiguration.getServiceContext().getIssuer(), client);
+    storeClient(opConfiguration.getServiceContext().getIssuer(), client);
     return client;
   }
 
@@ -570,6 +570,26 @@ public class RPHandler {
    */
   public List<OpConfiguration> getOpConfigurations() {
     return opConfigurations;
+  }
+  
+  /**
+   * Get the stored client for the given issuer.
+   * 
+   * @param issuer The issuer to get the client to.
+   * @return The client corresponding to the issuer, or null if it has not been stored.
+   */
+  public Client getClient(String issuer) {
+    return issuer2Client.get(issuer);
+  }
+  
+  /**
+   * Stores the client for the given issuer.
+   * 
+   * @param issuer The issuer to store the client to.
+   * @param client The client corresponding to the issuer.
+   */
+  public void storeClient(String issuer, Client client) {
+    issuer2Client.put(issuer, client);
   }
 
 }
