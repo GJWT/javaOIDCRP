@@ -43,6 +43,11 @@ import com.google.common.base.Strings;
  * This class contains configuration needed for the communication with an OP.
  */
 public class OpConfiguration {
+  
+  /**
+   * The issuer name for this OP configuration. Can be null, if only Webfinger is enabled.
+   */
+  private String issuer;
 
   /**
    * All information that a client needs to talk to an OP server. This is shared by various
@@ -64,6 +69,17 @@ public class OpConfiguration {
    * Constructor.
    */
   public OpConfiguration() {
+    this(null);
+  }
+  
+  /**
+   * Constructor.
+   * 
+   * @param issuer The issuer name for this OP configuration. Can be null, if only Webfinger is
+   *        enabled.
+   */
+  public OpConfiguration(String issuer) {
+    setIssuer(issuer);
     serviceContext = new ServiceContext();
     serviceConfigs = new ArrayList<ServiceConfig>();
   }
@@ -71,12 +87,10 @@ public class OpConfiguration {
   /**
    * Parses a map of OP configurations from the given JSON data.
    * 
-   * @param data
-   *          The JSON as byte array containing one or more OP configurations.
+   * @param data The JSON as byte array containing one or more OP configurations.
    * @return The map of parsed OP configurations. Keys contain the identifiers and values the
    *         corresponding OP configuration in the JSON the file.
-   * @throws DeserializationException
-   *           If the JSON file cannot be deserialized for any reason.
+   * @throws DeserializationException If the JSON file cannot be deserialized for any reason.
    */
   @SuppressWarnings("unchecked")
   public static Map<String, OpConfiguration> parseFromJson(byte[] data, String baseUrl)
@@ -98,6 +112,7 @@ public class OpConfiguration {
     for (String key : configs.keySet()) {
       Map<String, Object> map = (Map<String, Object>) configs.get(key);
       OpConfiguration opConfiguration = new OpConfiguration();
+      opConfiguration.setIssuer((String) map.get("issuer"));
       ServiceContext serviceContext = opConfiguration.getServiceContext();
       serviceContext.setBaseUrl(baseUrl);
       serviceContext.setIssuer((String) map.get("issuer"));
@@ -149,12 +164,10 @@ public class OpConfiguration {
   /**
    * Parses a map of OP configurations from the given JSON file.
    * 
-   * @param jsonFile
-   *          The JSON file containing one or more OP configurations.
+   * @param jsonFile The JSON file containing one or more OP configurations.
    * @return The map of parsed OP configurations. Keys contain the identifiers and values the
    *         corresponding OP configuration in the JSON the file.
-   * @throws DeserializationException
-   *           If the JSON file cannot be deserialized for any reason.
+   * @throws DeserializationException If the JSON file cannot be deserialized for any reason.
    */
   public static Map<String, OpConfiguration> parseFromJson(String jsonFile, String baseUrl)
       throws DeserializationException {
@@ -164,6 +177,22 @@ public class OpConfiguration {
     } catch (IOException e) {
       throw new DeserializationException("Could not read the data from JSON file " + jsonFile, e);
     }
+  }
+  
+  /**
+   * Get the issuer name for this OP configuration.
+   * @return The issuer name for this OP configuration.
+   */
+  public String getIssuer() {
+    return issuer;
+  }
+  
+  /**
+   * Sets the issuer name for this OP configuration. Can be null, if only Webfinger is enabled.
+   * @param iss What to set.
+   */
+  public void setIssuer(String iss) {
+    issuer = iss;
   }
 
   /**
