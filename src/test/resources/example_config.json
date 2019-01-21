@@ -53,7 +53,7 @@
             "issuer_mismatch": true
         },
         "services": {
-            "Registration": {},
+        	"WebFinger": {},
             "ProviderInfoDiscovery": {},
             "Authorization": {
                 "pre_construct": {
@@ -74,9 +74,7 @@
                     "target": "https://localhost:8080/oicrp/rp-request_uri-enc"
                 }
              },
-            "AccessToken": {},
-            "RefreshAccessToken": {},
-            "UserInfo": {"default_authn_method": "bearer_body"}
+            "AccessToken": {}
         }
     }
 }
