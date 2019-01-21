@@ -124,6 +124,16 @@ public class RPHandlerTest {
     Assert.assertNull(rpHandler.getOpConfigurationViaIssuer(""));
     Assert.assertNull(rpHandler.getOpConfigurationViaIssuer(null));
   }
+
+  @Test(expected = ValueException.class)
+  public void testOpDiscoveryFails() throws MissingRequiredAttributeException, 
+      RequestArgumentProcessingException, ValueException, InvalidClaimException, 
+      ClientProtocolException, IOException, SerializationException {
+    String issuer = "https://accounts.example4.com/not_found";
+    HttpClientUtil.setClient(HttpTestingSupport.buildHttpClient(200, 
+        HttpTestingSupport.getMinimalOpConfigurationResponse(issuer)));
+    rpHandler.begin(issuer, null);
+  }
   
   @Test
   public void testOpDiscoveryNoRegistration() throws MissingRequiredAttributeException, 
@@ -151,6 +161,33 @@ public class RPHandlerTest {
     Assert.assertEquals("3333333333", claims.get("client_secret"));
     Assert.assertEquals(Arrays.asList(baseUrl + "/authz_cb/mockIssuer3"), 
         claims.get("redirect_uris"));
+    
+    // rerun also works
+    beginResponse = rpHandler.begin(issuer, null);
+    Assert.assertNotNull(rpHandler.getClient(issuer));
+    Assert.assertNotSame(state, beginResponse.getState());
+  }
+
+  @Test(expected = ValueException.class)
+  public void testWebfingerIssuerNotFound() throws ClientProtocolException, IOException, 
+      MissingRequiredAttributeException, RequestArgumentProcessingException, ValueException, 
+      InvalidClaimException {
+    String issuer = "https://accounts.example2.com/";
+    String userId = "john.doe@example.org";
+    HttpClientUtil.setClient(HttpTestingSupport.buildHttpClient(200, 
+        HttpTestingSupport.getMinimalWebfingerResponse(userId, issuer + "invalid/")));
+    rpHandler.begin(null, userId);
+  }
+
+  @Test
+  public void testWebfingerSuccess() throws ClientProtocolException, IOException, 
+      MissingRequiredAttributeException, RequestArgumentProcessingException, ValueException, 
+      InvalidClaimException {
+    String issuer = "https://accounts.example2.com/";
+    String userId = "john.doe@example.org";
+    HttpClientUtil.setClient(HttpTestingSupport.buildHttpClient(200, 
+        HttpTestingSupport.getMinimalWebfingerResponse(userId, issuer)));
+    Assert.assertEquals(issuer, rpHandler.callWebfingerServices(userId).getIssuer());
   }
   
 }

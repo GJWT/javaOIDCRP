@@ -41,5 +41,18 @@ public class HttpTestingSupport {
         + "\"jwks_uri\": \"https://example.com/static/jwks_tE2iLbOAqXhe8bqh.json\",\n"
         + "\"authorization_endpoint\": \"https://example.com/authorization\"}";
   }
+  
+  public static String getMinimalWebfingerResponse(String subject, String issuer) {
+    return "{\n" + 
+        "   \"subject\" : \"" + subject + "\",\n" + 
+        "   \"links\" :\n" + 
+        "   [\n" + 
+        "     {\n" + 
+        "       \"rel\" : \"http://openid.net/specs/connect/1.0/issuer\",\n" + 
+        "       \"href\" : \"" + issuer + "\"\n" + 
+        "     }\n" + 
+        "   ]\n" + 
+        " }";
+  }
 
 }
