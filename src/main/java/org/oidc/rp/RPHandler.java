@@ -450,15 +450,18 @@ public class RPHandler {
         defaultRequestArguments.put("scope", behavior.getClaims().get("scope"));
       }
     }
-    String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(),
-        (String) defaultRequestArguments.get("state"));
+    String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), null);
+    
     Service authorization = getService(client.getOpConfiguration(), ServiceName.AUTHORIZATION);
+    BeginResponse response;
     try {
-      return new BeginResponse(authorization.getRequestParameters(defaultRequestArguments)
+      response = new BeginResponse(authorization.getRequestParameters(defaultRequestArguments)
           .getUrl(), state);
     } catch (UnsupportedSerializationTypeException | SerializationException e) {
       throw new ValueException("Could not serialize the request message", e);
     }
+    stateDb.storeItem(authorization.getRequestMessage(), state, MessageType.AUTHORIZATION_REQUEST);
+    return response;
   }
 
   /**
