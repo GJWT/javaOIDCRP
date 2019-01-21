@@ -1,6 +1,9 @@
 package org.oidc.rp;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
@@ -13,7 +16,8 @@ import org.mockito.Mockito;
  */
 public class HttpTestingSupport {
   
-  public static CloseableHttpClient buildHttpClient(int statusCode, String body) throws Exception {
+  public static CloseableHttpClient buildHttpClient(int statusCode, String body) 
+      throws ClientProtocolException, IOException {
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
@@ -26,14 +30,14 @@ public class HttpTestingSupport {
     return httpClient;
   }
 
-  public static String getMinimalOpConfigurationResponse() {
+  public static String getMinimalOpConfigurationResponse(String issuer) {
     return "{\n" + "\"response_types_supported\": [\"id_token\"],\n"
         + "\"subject_types_supported\": [\"public\", \"pairwise\"],\n"
         + "\"id_token_signing_alg_values_supported\": [\n"
         + "    \"RS256\", \"RS384\", \"RS512\",\n" + "    \"ES256\", \"ES384\", \"ES512\",\n"
         + "    \"HS256\", \"HS384\", \"HS512\",\n"
         + "    \"PS256\", \"PS384\", \"PS512\", \"none\"],\n"
-        + "\"issuer\": \"https://www.example.com\",\n"
+        + "\"issuer\": \"" + issuer + "\",\n"
         + "\"jwks_uri\": \"https://example.com/static/jwks_tE2iLbOAqXhe8bqh.json\",\n"
         + "\"authorization_endpoint\": \"https://example.com/authorization\"}";
   }
