@@ -328,30 +328,35 @@ public class RPHandler {
 
   /**
    * Calls the Webfinger services of all the configured OPs in order to find an issuer that could
-   * authenticate the given user identifier.
+   * authenticate the given user identifier. Finally its corresponding configuration is returned.
    * 
    * @param userId The user identifier whose authenticator is searched via Webfinger.
-   * @return The issuer name of the OP who can authenticate the user.
+   * @return The issuer configuration of the OP who can authenticate the user.
    * @throws MissingRequiredAttributeException If the response is missing a required attribute.
-   * @throws ValueException If the communication with any service fails or if the issuer could not
-   *        be resolved.
+   * @throws ValueException If the communication with any service fails, if the issuer could not
+   *        be resolved or the configuration corresponding to the issuer is not found.
    * @throws InvalidClaimException If the response contains invalid claims.
    * @throws RequestArgumentProcessingException If the request arguments are invalid.
    */
-  protected String callWebfingerServices(String userId) throws MissingRequiredAttributeException, 
-      ValueException, InvalidClaimException, RequestArgumentProcessingException {
+  protected OpConfiguration callWebfingerServices(String userId) throws 
+      MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+      RequestArgumentProcessingException {
     for (OpConfiguration opConfiguration : opConfigurations) {
       Service webfinger = getService(opConfiguration, ServiceName.WEBFINGER);
       if (webfinger != null) {
         Map<String, Object> requestParams = new HashMap<>();
         requestParams.put(Constants.WEBFINGER_RESOURCE, userId);
         callRemoteService(webfinger, requestParams, null);
-        if (opConfiguration.getServiceContext().getIssuer() != null) {
-          return opConfiguration.getServiceContext().getIssuer();
+        String resolvedIssuer = opConfiguration.getServiceContext().getIssuer();
+        if (resolvedIssuer != null) {
+          OpConfiguration resolvedConfig = getOpConfigurationViaIssuer(resolvedIssuer);
+          if (resolvedConfig != null) {
+            return resolvedConfig;
+          }
         }
       }
     }
-    throw new ValueException("Could not resolve the issuer for userId=" + userId);
+    throw new ValueException("Could not resolve the issuer configuration for userId=" + userId);
   }
 
   /**
@@ -385,12 +390,7 @@ public class RPHandler {
     OpConfiguration opConfiguration;
     if (issuer == null) {
       // Webfinger only if issuer is not given
-      String resolvedIssuer = callWebfingerServices(userId);
-      opConfiguration = getOpConfigurationViaIssuer(resolvedIssuer);
-      if (opConfiguration == null) {
-        throw new ValueException(
-            "Could not find OP configuration for Webfinger resolved issuer " + resolvedIssuer);
-      }
+      opConfiguration = callWebfingerServices(userId);
     } else {
       opConfiguration = getOpConfigurationViaIssuer(issuer);
       if (opConfiguration == null) {
