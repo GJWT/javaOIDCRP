@@ -101,7 +101,15 @@ public class RPHandlerTest {
   
   @Test
   public void testOpConfigurationViaIssuer() {
-   
+    String issuer = "https://accounts.example.com/";
+    OpConfiguration opConfig = rpHandler.getOpConfigurationViaIssuer(issuer);
+    Assert.assertEquals(issuer, opConfig.getIssuer());
+    String issuer2 = "https://accounts.example2.com/";
+    OpConfiguration opConfig2 = rpHandler.getOpConfigurationViaIssuer(issuer2);
+    Assert.assertEquals(issuer2, opConfig2.getIssuer());
+    Assert.assertNull(rpHandler.getOpConfigurationViaIssuer("not_existing_issuer"));
+    Assert.assertNull(rpHandler.getOpConfigurationViaIssuer(""));
+    Assert.assertNull(rpHandler.getOpConfigurationViaIssuer(null));
   }
   
 }
