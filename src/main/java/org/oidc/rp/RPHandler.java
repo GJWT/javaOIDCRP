@@ -542,7 +542,7 @@ public class RPHandler {
    * @param issuer The issuer corresponding to the desired OP configuration.
    * @return The OP configuration, or null if it was not found.
    */
-  private OpConfiguration getOpConfigurationViaIssuer(String issuer) {
+  protected OpConfiguration getOpConfigurationViaIssuer(String issuer) {
     if (Strings.isNullOrEmpty(issuer)) {
       return null;
     }
