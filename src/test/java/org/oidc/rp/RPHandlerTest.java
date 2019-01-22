@@ -150,6 +150,7 @@ public class RPHandlerTest {
     String redirectUri = beginResponse.getRedirectUri();
     Assert.assertNotNull(redirectUri);
     Assert.assertTrue(redirectUri.startsWith("https://example.com/authorization"));
+    Assert.assertTrue(redirectUri.contains("state=" + state));
     Message storedMsg = rpHandler.getStateDb().getItem(state, MessageType.AUTHORIZATION_REQUEST);
     Assert.assertEquals(redirectUri.substring(redirectUri.indexOf("?") + 1), 
         storedMsg.toUrlEncoded());
