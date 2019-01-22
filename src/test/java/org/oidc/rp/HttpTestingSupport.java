@@ -1,7 +1,6 @@
 package org.oidc.rp;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -30,8 +29,15 @@ public class HttpTestingSupport {
     return httpClient;
   }
 
-  public static String getMinimalOpConfigurationResponse(String issuer) {
-    return "{\n" + "\"response_types_supported\": [\"id_token\"],\n"
+  public static String getMinimalOpConfigurationResponse(String issuer, boolean code) {
+    String response = "{\n \"response_types_supported\": [\"";
+    if (code) {
+      response = response + "code\"],\n"
+          + "\"token_endpoint\": \"https://example.com/token\",";
+    } else {
+      response = response + "id_token\"],\n";      
+    }
+    response = response
         + "\"subject_types_supported\": [\"public\", \"pairwise\"],\n"
         + "\"id_token_signing_alg_values_supported\": [\n"
         + "    \"RS256\", \"RS384\", \"RS512\",\n" + "    \"ES256\", \"ES384\", \"ES512\",\n"
@@ -40,6 +46,7 @@ public class HttpTestingSupport {
         + "\"issuer\": \"" + issuer + "\",\n"
         + "\"jwks_uri\": \"https://example.com/static/jwks_tE2iLbOAqXhe8bqh.json\",\n"
         + "\"authorization_endpoint\": \"https://example.com/authorization\"}";
+    return response;
   }
   
   public static String getMinimalWebfingerResponse(String subject, String issuer) {
@@ -53,6 +60,18 @@ public class HttpTestingSupport {
         "     }\n" + 
         "   ]\n" + 
         " }";
+  }
+  
+  public static String getAccessTokenResponse(String accessToken, String refreshToken) {
+    String response = "{\n" + 
+        "   \"access_token\": \"" + accessToken + "\",\n" + 
+        "   \"token_type\": \"Bearer\",\n";
+    if (refreshToken != null) {
+        response = response + "   \"refresh_token\": \"" + refreshToken + "\",\n";
+    }
+    return response +
+        "   \"expires_in\": 3600\n" + 
+        "  }";
   }
 
 }
