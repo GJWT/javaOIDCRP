@@ -51,11 +51,11 @@ public class OpConfigurationTest {
   @Before
   public void setup() {
     file = "src/test/resources/example_config.json";
-    issuer = "https://accounts.example2.com/";
+    issuer = "https://accounts.example3.com/";
     baseUrl = "https://mock.example.org/rp";
-    clientId = "xxxxxxxxx.apps.exampleusercontent2.com";
-    clientSecret = "2222222222";
-    redirectUri = baseUrl + "/authz_cb/mockIssuer2";
+    clientId = "xxxxxxxxx.apps.exampleusercontent3.com";
+    clientSecret = "3333333333";
+    redirectUri = baseUrl + "/authz_cb/mockIssuer3";
     responseTypes = Arrays.asList("code");
     scope = Arrays.asList("openid", "profile", "email");
   }
@@ -64,8 +64,8 @@ public class OpConfigurationTest {
   public void testWithFile() throws DeserializationException {
     Map<String, OpConfiguration> opConfigs = OpConfiguration.parseFromJson(file, baseUrl);
     Assert.assertNotNull(opConfigs);
-    Assert.assertEquals(3, opConfigs.size());
-    OpConfiguration opConfig = opConfigs.get("mockIssuer2");
+    Assert.assertEquals(5, opConfigs.size());
+    OpConfiguration opConfig = opConfigs.get("mockIssuer3");
     Assert.assertNotNull(opConfig);
     ServiceConfig registrationConfig = null;
     for (ServiceConfig config : opConfig.getServiceConfigs()) {
