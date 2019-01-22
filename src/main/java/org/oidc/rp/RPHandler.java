@@ -451,6 +451,7 @@ public class RPHandler {
       }
     }
     String state = stateDb.createStateRecord(client.getServiceContext().getIssuer(), null);
+    defaultRequestArguments.put("state", state);
     
     Service authorization = getService(client.getOpConfiguration(), ServiceName.AUTHORIZATION);
     BeginResponse response;
@@ -460,7 +461,6 @@ public class RPHandler {
     } catch (UnsupportedSerializationTypeException | SerializationException e) {
       throw new ValueException("Could not serialize the request message", e);
     }
-    stateDb.storeItem(authorization.getRequestMessage(), state, MessageType.AUTHORIZATION_REQUEST);
     return response;
   }
 
