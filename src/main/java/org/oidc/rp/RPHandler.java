@@ -199,6 +199,9 @@ public class RPHandler {
           RequestArgumentProcessingException {
     AuthenticationRequest request = (AuthenticationRequest) stateDb.getItem(state,
         MessageType.AUTHORIZATION_REQUEST);
+    if (request == null) {
+      throw new ValueException("Could not find an authorization request matching state " + state);
+    }
     String responseTypes = (String) request.getClaims().get("response_type");
     // if response_type contains id_token we should have it in authentication response
     IDToken idToken = null;
@@ -307,8 +310,7 @@ public class RPHandler {
       InvalidClaimException, MissingRequiredAttributeException {
 
     Service service = getService(client.getOpConfiguration(), ServiceName.AUTHORIZATION);
-    ResponseMessage response = (AuthenticationResponse) service
-        .parseResponse(urlEncodedResponseBody);
+    ResponseMessage response = (ResponseMessage) service.parseResponse(urlEncodedResponseBody);
     if (response.indicatesErrorResponseMessage()) {
       return response;
     }
