@@ -101,7 +101,7 @@ public class HttpClientWrapperTest {
   @Test
   public void testGetParseableResponse() throws Exception {
     HttpClientUtil.setClient(HttpTestingSupport.buildHttpClient(200, 
-        HttpTestingSupport.getMinimalOpConfigurationResponse("https://www.example.com")));
+        HttpTestingSupport.getMinimalOpConfigurationResponse("https://www.example.com", false)));
     Service service = new ProviderInfoDiscovery(buildServiceContext(), null, null);
     HttpClientWrapper.doRequest(new HttpArguments(HttpMethod.GET, url), service, null);
   }
