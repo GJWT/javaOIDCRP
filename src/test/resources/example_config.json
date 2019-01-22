@@ -44,8 +44,7 @@
         "redirect_uris": ["${BASEURL}/authz_cb/mockIssuer2"],
         "client_prefs": {
             "response_types": ["code"],
-            "scope": ["openid", "profile", "email"],
-            "token_endpoint_auth_method": "client_secret_post"
+            "scope": ["openid", "profile", "email"]
         },
         "allow": {
             "issuer_mismatch": true
@@ -53,27 +52,7 @@
         "services": {
         	"WebFinger": {},
             "ProviderInfoDiscovery": {},
-            "Registration": {},
-            "Authorization": {
-                "pre_construct": {
-                    "claims": {
-                        "id_token": {
-                            "email": {
-                                "essential": true
-                            }
-                        }
-                    },
-                    "request_method": "request_uri"
-                },
-                "post_construct": {
-                    "request_method": "request_uri",
-                    "request_object_signing_alg": "none",
-                    "request_object_encryption_alg": "RSA1_5",
-                    "request_object_encryption_enc": "A128CBC-HS256",
-                    "target": "https://localhost:8080/oicrp/rp-request_uri-enc"
-                }
-             },
-            "AccessToken": {}
+            "Authorization": {}
         }
     },
     "mockIssuer3": {
@@ -81,9 +60,36 @@
         "client_id": "xxxxxxxxx.apps.exampleusercontent3.com",
         "client_secret": "3333333333",
         "redirect_uris": ["${BASEURL}/authz_cb/mockIssuer3"],
+        "client_prefs": {
+            "response_types": ["code"],
+            "scope": ["openid", "profile", "email"]
+        },
         "services": {
             "ProviderInfoDiscovery": {},
-            "Authorization": {}
+            "Authorization": {},
+            "AccessToken": {},
+            "Registration": {}
         }
-    }
+    },
+    "mockIssuer4": {
+        "issuer": "https://accounts.example4.com/",
+        "client_id": "xxxxxxxxx.apps.exampleusercontent4.com",
+        "client_secret": "3333344444",
+        "redirect_uris": ["${BASEURL}/authz_cb/mockIssuer4"],
+        "services": {
+            "ProviderInfoDiscovery": {},
+            "Authorization": {},
+            "AccessToken": {}
+        }
+    },
+    "mockIssuer5": {
+        "issuer": "https://accounts.example5.com/",
+        "client_id": "xxxxxxxxx.apps.exampleusercontent5.com",
+        "client_secret": "3333355555",
+        "redirect_uris": ["${BASEURL}/authz_cb/mockIssuer5"],
+        "services": {
+            "ProviderInfoDiscovery": {},
+            "AccessToken": {}
+        }
+    }   
 }
