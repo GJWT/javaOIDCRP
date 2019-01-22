@@ -64,7 +64,6 @@ public class HttpClientWrapper {
       StringEntity entity;
       try {
         entity = new StringEntity(httpArguments.getBody() == null ? "" : httpArguments.getBody());
-        System.out.println("Sending payload: " + httpArguments.getBody());
         httpPost.setEntity(entity);
         doRequest(httpPost, service, stateKey, httpArguments);
       } catch (UnsupportedEncodingException e) {
@@ -115,7 +114,6 @@ public class HttpClientWrapper {
     try {
       Message message = service.parseResponse(response.getBody(), stateKey);
       service.updateServiceContext(message, stateKey);
-      System.out.println(service.getServiceContext().getIssuer());
     } catch (DeserializationException  e) {
       throw new ValueException("The response message could not be deserialized, status code = " +
           response.getStatusCode(), e);
