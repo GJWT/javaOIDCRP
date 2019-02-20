@@ -53,6 +53,7 @@ import org.oidc.service.data.State;
 import org.oidc.service.oidc.AccessToken;
 import org.oidc.service.oidc.Authentication;
 import org.oidc.service.oidc.ProviderInfoDiscovery;
+import org.oidc.service.oidc.RefreshAccessToken;
 import org.oidc.service.oidc.Registration;
 import org.oidc.service.oidc.UserInfo;
 import org.oidc.service.oidc.Webfinger;
@@ -506,6 +507,76 @@ public class RPHandler {
       throw new ValueException("Could not communicate with the remote server", e);
     }
   }
+  
+  /**
+   * Refresh the access and refresh tokens by using the previously obtained refresh token.
+   * 
+   * @param issuer The issuer whose refresh token service is used.
+   * @param state The state from which the existing refresh token is read.
+   * @throws MissingRequiredAttributeException If the response is missing a required attribute.
+   * @throws ValueException If the communication fails.
+   * @throws InvalidClaimException If the response contains invalid claims.
+   * @throws RequestArgumentProcessingException If the request arguments are invalid.
+   */
+  public void refreshTokens(String issuer, String state)
+      throws MissingRequiredAttributeException, ValueException, InvalidClaimException, 
+      RequestArgumentProcessingException {
+    Client client = getClient(issuer);
+    if (client == null) {
+      throw new MissingRequiredAttributeException("Could not resolve client for the issuer " 
+          + issuer);
+    }
+    Service service = getService(client.getOpConfiguration(), ServiceName.REFRESH_ACCESS_TOKEN);
+    if (service == null) {
+      throw new MissingRequiredAttributeException(
+          "RefreshAccessToken service is not configured for the issuer");
+    }
+    if (getRefreshToken(state) == null) {
+      throw new MissingRequiredAttributeException("Could not find refresh token for the state");
+    }
+    Map<String, Object> requestArguments = new HashMap<>();
+    requestArguments.put("state", state);
+    
+    callRemoteService(service, requestArguments, state);
+  }
+  
+  /**
+   * Get the most fresh access token stored for the given state.
+   * 
+   * @param state The state for which the access token is read.
+   * @return The most fresh access token.
+   */
+  public String getAccessToken(String state) {
+    AccessTokenResponse tokenResponse = getMostFreshTokenResponse(state);
+    return tokenResponse == null ? null : (String) tokenResponse.getClaims().get("access_token");
+  }
+  
+  /**
+   * Get the most fresh refresh token stored for the given state.
+   * 
+   * @param state The state for which the refresh token is read.
+   * @return The most fresh refresh token.
+   */
+  public String getRefreshToken(String state) {
+    AccessTokenResponse tokenResponse = getMostFreshTokenResponse(state);
+    return tokenResponse == null ? null : (String) tokenResponse.getClaims().get("refresh_token");    
+  }
+  
+  /**
+   * Get the most fresh access token response for the given state. Depending on the history, it may
+   * have been obtained from AccessTokenService or RefreshAccessTokenService.
+   * 
+   * @param state The state for which the response is read.
+   * @return The most fresh access token response.
+   */
+  protected AccessTokenResponse getMostFreshTokenResponse(String state) {
+    AccessTokenResponse tokenResponse = (AccessTokenResponse) getStateDb().getItem(state,
+        MessageType.REFRESH_TOKEN_RESPONSE);
+    if (tokenResponse == null) {
+      return (AccessTokenResponse) getStateDb().getItem(state, MessageType.TOKEN_RESPONSE);
+    }
+    return tokenResponse;
+  }
 
   /**
    * Get the desired service from the given OP configuration.
@@ -535,6 +606,9 @@ public class RPHandler {
         }
         if (ServiceName.USER_INFO.equals(serviceName)) {
           return new UserInfo(serviceContext, stateDb, serviceConfig);
+        }
+        if (ServiceName.REFRESH_ACCESS_TOKEN.equals(serviceName)) {
+          return new RefreshAccessToken(serviceContext, stateDb, serviceConfig);
         }
       }
     }
