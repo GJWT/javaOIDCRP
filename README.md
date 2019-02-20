@@ -205,3 +205,11 @@ import org.oidc.msg.oidc.OpenIDSchema;
 ...
     
 ```
+
+The _state_ value can also be given to the following methods:
+
+* RPHandler.getAccessToken(state): Returns the most fresh access token from the state database.
+* RPHandler.getRefreshToken(state): Returns the most fresh refresh token from the state database.
+* RPHandler.refreshTokens(issuer, state): Refresh the access and refresh tokens, assuming that the RefreshAccessToken service has been configured for the given issuer.
+
+Depending on the history of the state, the most fresh access and/or refresh tokens may be read from AccessTokenService or RefreshAccessTokenService.
